@@ -1,10 +1,13 @@
+from requests import request
+
 from fastapi import FastAPI, APIRouter, status, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse,StreamingResponse
 from routes.schemas.nlp import PushRequest, SearchRequest
 from models.ProjectModel import ProjectModel
 from models.ChunkModel import ChunkModel
 from controllers import NLPController
 from models import ResponseSignal
+from controllers.OrchestratorController import Orchestrator
 
 import logging
 
@@ -44,7 +47,8 @@ async def index_project(request: Request, project_id: str, push_request: PushReq
         generation_client=request.app.state.generation_client,
         embedding_client=request.app.state.embedding_client,
         template_parser=request.app.state.template_parser,
-        mongo_client=db_client
+        mongo_client=db_client,
+        reranker_client=request.app.state.reranker_client
     )
 
     has_records = True
@@ -109,7 +113,8 @@ async def get_project_index_info(request: Request, project_id: str):
         generation_client=request.app.state.generation_client,
         embedding_client=request.app.state.embedding_client,
         template_parser=request.app.state.template_parser,
-        mongo_client=db_client
+        mongo_client=db_client,
+        reranker_client=request.app.state.reranker_client
     )
 
     collection_info = nlp_controller.get_vector_db_collection_info(project=project)
@@ -139,7 +144,8 @@ async def search_index(request: Request, project_id: str, search_request: Search
         generation_client=request.app.state.generation_client,
         embedding_client=request.app.state.embedding_client,
         template_parser=request.app.state.template_parser,
-        mongo_client=db_client
+        mongo_client=db_client,
+        reranker_client=request.app.state.reranker_client
 
     )
 
@@ -162,120 +168,30 @@ async def search_index(request: Request, project_id: str, search_request: Search
         }
     )
 
+
 @nlp_router.post("/index/answer/{project_id}")
 async def answer_rag(request: Request, project_id: str, search_request: SearchRequest):
-    
+
     project_model = await ProjectModel.create_instance(
         db_client=request.app.state.db_client
     )
+    project = await project_model.get_project_or_create_one(project_id=project_id)
 
-    project = await project_model.get_project_or_create_one(
-        project_id=project_id
-    )
-    db_client = request.app.state.db_client
+    # ✅ use the singleton — never rebuild here
+    orchestrator = request.app.state.orchestrator
 
-    nlp_controller = NLPController(
-        vectordb_client=request.app.state.vectordb_client,
-        generation_client=request.app.state.generation_client,
-        embedding_client=request.app.state.embedding_client,
-        template_parser=request.app.state.template_parser,
-        mongo_client=db_client
-    )
+    async def event_generator():
+        try:
+            async for chunk in orchestrator.route_query_stream(
+                project=project,
+                query=search_request.text,
+                limit=search_request.limit,
+            ):
+                safe_chunk = chunk.replace("\n", "\ndata: ")
+                yield f"data: {safe_chunk}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception as e:
+            logger.error(f"Streaming error: {e}")
+            yield "data: [ERROR] حدث خطأ أثناء توليد الإجابة\n\n"
 
-    answer, full_prompt, chat_history = await nlp_controller.answer_rag_question(
-        project=project,
-        query=search_request.text,
-        limit=search_request.limit,
-    )
-
-    if not answer:
-        return JSONResponse(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                content={
-                    "signal": ResponseSignal.RAG_ANSWER_ERROR.value
-                }
-        )
-    
-    return JSONResponse(
-        content={
-            "signal": ResponseSignal.RAG_ANSWER_SUCCESS.value,
-            "answer": answer,
-            "full_prompt": full_prompt,
-            "chat_history": chat_history
-        }
-    )
-    # ==========================================================
-    # STEP 1: SUPERVISOR (Routing Logic)
-    # ==========================================================
-    routing_prompt = f"""
-    أنت موجه مهام (Router) للذكاء الاصطناعي الخاص بطلاب هندسة المنصورة. 
-    اقرأ سؤال الطالب وحدد من يجب أن يجيب عليه:
-    1. "CourseAgent": إذا كان السؤال عن المقررات الدراسية، الساعات المعتمدة، اللوائح، التسجيل، أو تفاصيل المواد.
-    2. "JobAgent": إذا كان السؤال عن الوظائف، التدريبات الصيفية، سوق العمل، المهارات، أو التوجيه المهني.
-    
-    أجب بكلمة واحدة فقط: CourseAgent أو JobAgent.
-    
-    السؤال: {search_request.text}
-    """
-    
-    # Generate the routing decision
-    selected_agent = request.app.state.generation_client.generate_response(
-        prompt=routing_prompt, 
-        chat_history=[]
-    ).strip()
-
-    # ==========================================================
-    # STEP 2: AGENT EXECUTION
-    # ==========================================================
-    # Initialize variables to hold the tuple return values
-    answer = None
-    full_prompt = None
-    chat_history = None
-
-    if "JobAgent" in selected_agent:
-        print("💼 Routing to Job Agent...")
-        # Pass the individual clients from the app state
-        job_agent = JobAgent(
-            vectordb_client=request.app.state.vectordb_client,
-            embedding_client=request.app.state.embedding_client,
-            generation_client=request.app.state.generation_client,
-            template_parser=request.app.state.template_parser
-        )
-        answer, full_prompt, chat_history = job_agent.process(
-            project=project, 
-            query=search_request.text
-        )
-
-    else:
-        print("📚 Routing to Course Agent...")
-        # Pass the individual clients from the app state
-        course_agent = CourseAgent(
-            vectordb_client=request.app.state.vectordb_client,
-            embedding_client=request.app.state.embedding_client,
-            generation_client=request.app.state.generation_client,
-            template_parser=request.app.state.template_parser
-        )
-        answer, full_prompt, chat_history = course_agent.process(
-            project=project, 
-            query=search_request.text
-        )
-
-    # ==========================================================
-    # STEP 3: RESPONSE HANDLING
-    # ==========================================================
-    if not answer:
-        return JSONResponse(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                content={
-                    "signal": ResponseSignal.RAG_ANSWER_ERROR.value
-                }
-        )
-    
-    return JSONResponse(
-        content={
-            "signal": ResponseSignal.RAG_ANSWER_SUCCESS.value,
-            "answer": answer,
-            "full_prompt": full_prompt,
-            "chat_history": chat_history
-        }
-    )
+    return StreamingResponse(event_generator(), media_type="text/event-stream")

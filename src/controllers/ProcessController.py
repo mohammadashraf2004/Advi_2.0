@@ -6,18 +6,36 @@ from langchain_community.document_loaders import PyMuPDFLoader
 from models.enums.ProcessingEnums import ProcessingEnums
 from typing import List
 from dataclasses import dataclass
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from typing import List
-# Assuming you are using LangChain's Document class
-from langchain_core.documents import Document 
-from langchain_community.document_loaders import Docx2txtLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+# 🌟 أضفنا مكتبة مايكروسوفت الجديدة
+from markitdown import MarkItDown 
 import re
 import tiktoken
 
+# (تم إيقاف استيراد Document من Langchain لمنع التضارب مع الكلاس الخاص بك)
 @dataclass
 class Document:
     page_content: str
     metadata: dict
+
+# ==========================================
+# 🌟 محول مخصص لوثائق الوورد (Custom Loader)
+# ==========================================
+class MarkItDownDocxLoader:
+    """
+    كلاس يعمل كـ Wrapper ليحاكي سلوك LangChain Loaders.
+    يحتوي على دالة load() تقوم بقراءة الوورد وإرجاع قائمة من الـ Documents.
+    """
+    def __init__(self, file_path: str):
+        self.file_path = file_path
+
+    def load(self):
+        md = MarkItDown()
+        result = md.convert(self.file_path)
+        # إرجاع النص بصيغة Markdown مع الاحتفاظ بمسار الملف في الميتاداتا
+        return [Document(page_content=result.text_content, metadata={"source": self.file_path})]
+
 
 class ProcessController(BaseController):
 
@@ -46,8 +64,10 @@ class ProcessController(BaseController):
 
         if file_ext == ProcessingEnums.PDF.value:
             return PyMuPDFLoader(file_path)
+            
         if file_ext == ProcessingEnums.DOCX.value:
-            return Docx2txtLoader(file_path)
+            # 🌟 استخدام المحول الذكي الجديد للجداول
+            return MarkItDownDocxLoader(file_path)
         
         return None
 
@@ -59,44 +79,103 @@ class ProcessController(BaseController):
 
         return None
     
-    def normalize_arabic(self,text):
+    def normalize_arabic(self, text):
+        if not text:
+            return ""
         text = re.sub(r"[إأآا]", "ا", text)
         text = re.sub(r"ى", "ي", text)
         text = re.sub(r"ئ", "ي", text)
         text = re.sub(r"ة", "ه", text)
-        text = re.sub(r""" ّ|َ|ً|ُ|ٌ|ِ|ٍ|ْ|ـ""", '', text)
+        # 🌟 استخدام Unicode Range لضمان إزالة كل التشكيل والتطويل بدون أخطاء مسافات
+        text = re.sub(r"[\u064B-\u065F\u0640]", "", text)
         text = re.sub(r"\s+", " ", text)
         return text.strip()
 
-    def process_file_content(self, file_content: list, file_id: str,
-                            chunk_size: int = 500,
-                            overlap_size: int = 75):
+    def process_file_content(
+        self,
+        file_content: list,
+        file_id: str,
+        chunk_size: int = 500,
+        overlap_size: int = 80
+    ):
 
-        # Use same tokenizer as the embedding / LLM model
         enc = tiktoken.get_encoding("cl100k_base")
 
-        # Normalize Arabic text
-        file_content_texts = [
-            self.normalize_arabic(rec.page_content.strip())
-            for rec in file_content
-        ]
+        # ---------------------------
+        # 1. تنظيف النص
+        # ---------------------------
+        def clean_text(text):
+            text = re.sub(r'[ \t]+', ' ', text)
+            text = re.sub(r'\n{3,}', '\n\n', text)
+            return text.strip()
 
-        file_content_metadata = [
-            rec.metadata
-            for rec in file_content
-        ]
+        # ---------------------------
+        # 2. تحويل الجداول إلى نص
+        # ---------------------------
+        def convert_table_to_text(text):
+            if "|" not in text:
+                return text
 
+            lines = text.split("\n")
+            new_lines = []
+
+            for line in lines:
+                if "|" in line:
+                    cells = [c.strip() for c in line.split("|") if c.strip()]
+                    if len(cells) > 1:
+                        new_lines.append("تفاصيل السطر: " + " - ".join(cells))
+                else:
+                    new_lines.append(line)
+
+            return "\n".join(new_lines)
+
+        # ---------------------------
+        # 3. استخراج عنوان المقطع
+        # ---------------------------
+        def extract_title(text):
+            match = re.search(r'\*\*•\s*(.*?)\*\*', text)
+            if match:
+                return match.group(1).strip()
+            return "general"
+
+        # ---------------------------
+        # 4. تحديد القسم (Metadata)
+        # ---------------------------
+        def detect_section(text):
+            if "الهيكل الإداري" in text:
+                return "administrative_structure"
+            elif "الساعات المعتمدة" in text:
+                return "credit_hours"
+            elif "القيد" in text or "التحويل" in text:
+                return "enrollment"
+            return "general"
+
+        # ---------------------------
+        # تجهيز النصوص
+        # ---------------------------
+        file_content_texts = []
+        file_content_metadata = []
+
+        for rec in file_content:
+            text = clean_text(rec.page_content)
+            text = convert_table_to_text(text)
+
+            file_content_texts.append(text)
+            file_content_metadata.append(rec.metadata)
+
+        # ---------------------------
+        # 5. Chunking أذكى
+        # ---------------------------
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=chunk_size,              # measured in TOKENS now
-            chunk_overlap=overlap_size,         # 10–20% recommended
+            chunk_size=chunk_size,
+            chunk_overlap=overlap_size,
             separators=[
+                "\n\n**•",  # أهم فصل حسب العناوين
                 "\n\n",
                 "\n",
                 "؟",
                 "!",
-                "؛",
-                "،",
-                ". ",
+                ".",
                 " "
             ],
             length_function=lambda text: len(enc.encode(text))
@@ -106,6 +185,45 @@ class ProcessController(BaseController):
             texts=file_content_texts,
             metadatas=file_content_metadata
         )
+
+        print(f"[DEBUG] Enhancing {len(chunks)} chunks with semantic structure...")
+
+        # ---------------------------
+        # 6. تحسين كل Chunk
+        # ---------------------------
+        for chunk in chunks:
+            text = chunk.page_content
+
+            # استخراج العنوان
+            title = extract_title(text)
+
+            # إضافة bilingual + context
+            enhanced_text = f"""
+    العنوان: {title}
+    Title: {title}
+
+    المحتوى:
+    {text}
+    """.strip()
+
+            chunk.page_content = enhanced_text
+
+            # -------------------
+            # Metadata
+            # -------------------
+            chunk.metadata["file_id"] = file_id
+            chunk.metadata["section"] = detect_section(text)
+
+            # has_table
+            chunk.metadata["has_table"] = "|" in text or "جدول" in text
+
+            # has_url
+            chunk.metadata["has_url"] = bool(
+                re.search(r'(http|www\.|edu\.eg|myu\.mans)', text, re.IGNORECASE)
+            )
+
+            # normalized text (BM25)
+            chunk.metadata["normalized_text"] = self.normalize_arabic(text)
 
         return chunks
     
@@ -166,7 +284,7 @@ class ProcessController(BaseController):
     
     
 
-    # def process_simpler_splitter(self, texts: List[str], metadatas: List[dict], chunk_size: int, splitter_tag: str="\n"):
+    # def process_simpler_splitter(self, texts: List[str], metadatas: List[dict], chunk_size: int,overlap_size: int = 200, splitter_tag: str="\n"):
     #     chunks = []
 
     #     # 1. Zip texts and metadatas together to preserve document-level metadata

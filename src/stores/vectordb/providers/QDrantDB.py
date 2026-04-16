@@ -5,10 +5,12 @@ import logging
 from typing import List
 from models.db_schemas import RetrievalDocument
 import uuid
+from qdrant_client import QdrantClient
+from qdrant_client.http.models import Distance, VectorParams
 
 class QdrantDBProvider(VectorDBInterface):
 
-    def __init__(self, db_client: str, default_vector_size: int = 786,
+    def __init__(self, db_client: str, default_vector_size: int = 768,
                                      distance_method: str = None, index_threshold: int=100):
 
         self.client = None
@@ -26,6 +28,8 @@ class QdrantDBProvider(VectorDBInterface):
     def connect(self):
         print(f"DEBUG: Attempting to connect to Qdrant at: {self.db_client}")
         self.client = QdrantClient(url=self.db_client)
+
+        self._ensure_cache_exists()
 
     def disconnect(self):
         self.client = None
@@ -154,3 +158,25 @@ class QdrantDBProvider(VectorDBInterface):
             })
             for result in results
         ]
+    
+    def _ensure_cache_exists(self):
+        # التأكد من أن الاتصال موجود
+        if not self.client:
+            return
+
+        try:
+            collections = self.client.get_collections().collections
+            exists = any(c.name == "semantic_cache" for c in collections)
+            
+            if not exists:
+                self.logger.info("[DEBUG] 🛠️ Creating semantic_cache collection...")
+                self.client.create_collection(
+                    collection_name="semantic_cache",
+                    vectors_config=models.VectorParams(
+                        size=3072, # خليها 1536 لـ OpenAI و 768 لـ BGE
+                        distance=self.distance_method or models.Distance.COSINE
+                    ),
+                )
+                print("✅ Semantic cache collection created!")
+        except Exception as e:
+            self.logger.error(f"Failed to ensure cache existence: {e}")

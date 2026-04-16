@@ -17,4 +17,5 @@ faiss-cpu==1.13.2
 faster_whisper
 rank-bm25==0.2.2
 scrapling
+tiktoken==0.6.0
 

@@ -1,0 +1,400 @@
+{
+    "total_required_hours": 161,
+    "courses": {
+        "BAS 011": {
+            "name": "رياضيات (1)",
+            "credits": 3,
+            "prerequisites": []
+        },
+        "BAS 020": {
+            "name": "ميكانيكا (1)",
+            "credits": 3,
+            "prerequisites": []
+        },
+        "BAS 031": {
+            "name": "فيزياء (1)",
+            "credits": 3,
+            "prerequisites": []
+        },
+        "BAS 041": {
+            "name": "كيمياء هندسيه",
+            "credits": 3,
+            "prerequisites": []
+        },
+        "PDE 052": {
+            "name": "رسم هندسي",
+            "credits": 3,
+            "prerequisites": []
+        },
+        "UNR 061": {
+            "name": "لغه انجليزيه (1)",
+            "credits": 2,
+            "prerequisites": []
+        },
+        "BAS 012": {
+            "name": "رياضيات (2)",
+            "credits": 3,
+            "prerequisites": [
+                "BAS 011"
+            ]
+        },
+        "BAS 021": {
+            "name": "ميكانيكا (2)",
+            "credits": 3,
+            "prerequisites": [
+                "BAS 020"
+            ]
+        },
+        "BAS 032": {
+            "name": "فيزياء (2)",
+            "credits": 3,
+            "prerequisites": [
+                "BAS 031"
+            ]
+        },
+        "CSE 042": {
+            "name": "مقدمه لنظم الحاسب",
+            "credits": 3,
+            "prerequisites": []
+        },
+        "PDE 051": {
+            "name": "هندسه الانتاج",
+            "credits": 3,
+            "prerequisites": []
+        },
+        "UNR 021": {
+            "name": "تاريخ الهندسه والتكنولوجيا",
+            "credits": 2,
+            "prerequisites": []
+        },
+        "BAS 115": {
+            "name": "الجبر الخطي",
+            "credits": 3,
+            "prerequisites": [
+                "BAS 012"
+            ]
+        },
+        "CSE 151": {
+            "name": "مقدمه للذكاء الاصطناعي",
+            "credits": 3,
+            "prerequisites": []
+        },
+        "CSE 141": {
+            "name": "تصميم رقمي",
+            "credits": 3,
+            "prerequisites": [
+                "CSE 042"
+            ]
+        },
+        "UNR 181": {
+            "name": "القانون وحقوق الانسان",
+            "credits": 2,
+            "prerequisites": []
+        },
+        "ECE 121": {
+            "name": "دواير كهربيه",
+            "credits": 3,
+            "prerequisites": [
+                "BAS 032"
+            ]
+        },
+        "ENG 111": {
+            "name": "كتابه تقارير فنيه",
+            "credits": 2,
+            "prerequisites": [
+                "UNR 061"
+            ]
+        },
+        "BAS 116": {
+            "name": "طرق رياضيه للمهندسين",
+            "credits": 3,
+            "prerequisites": [
+                "BAS 115"
+            ]
+        },
+        "ECE 122": {
+            "name": "الكترونيات",
+            "credits": 3,
+            "prerequisites": [
+                "ECE 121"
+            ]
+        },
+        "CSE 111": {
+            "name": "برمجه (1)",
+            "credits": 3,
+            "prerequisites": [
+                "CSE 141"
+            ]
+        },
+        "CSE 112": {
+            "name": "خوارزميات وهياكل بيانات",
+            "credits": 3,
+            "prerequisites": [
+                "CSE 042"
+            ]
+        },
+        "ELE 151": {
+            "name": "قوي والات كهربيه",
+            "credits": 3,
+            "prerequisites": [
+                "ECE 121"
+            ]
+        },
+        "UNR 121": {
+            "name": "مهارات البحث والتحليل",
+            "credits": 2,
+            "prerequisites": []
+        },
+        "ARI 171": {
+            "name": "تدريب عملي",
+            "credits": 0,
+            "prerequisites": [],
+            "constraints": [
+                "Pass/Fail"
+            ]
+        },
+        "BAS 216": {
+            "name": "الاحصاء وتحليل البيانات",
+            "credits": 2,
+            "prerequisites": [
+                "BAS 115"
+            ]
+        },
+        "ECE 234": {
+            "name": "اشارات ونظم",
+            "credits": 3,
+            "prerequisites": [
+                "BAS 116"
+            ]
+        },
+        "UNR 241": {
+            "name": "مهارات الاتصال والعرض",
+            "credits": 2,
+            "prerequisites": []
+        },
+        "ECE 223": {
+            "name": "قياسات واجهزه قياس",
+            "credits": 3,
+            "prerequisites": [
+                "ECE 122"
+            ]
+        },
+        "CSE 251": {
+            "name": "تعلم الالة ",
+            "credits": 3,
+            "prerequisites": [
+                "CSE 151"
+            ]
+        },
+        "CSE 221": {
+            "name": "تحكم الي",
+            "credits": 3,
+            "prerequisites": [
+                "BAS 116"
+            ]
+        },
+        "BAS 217": {
+            "name": "الرياضيات المتقطعه",
+            "credits": 3,
+            "prerequisites": [
+                "BAS 216"
+            ]
+        },
+        "ECE 224": {
+            "name": "مستشعرات وموثرات",
+            "credits": 3,
+            "prerequisites": [
+                "ECE 223"
+            ]
+        },
+        "BAS 218": {
+            "name": "رياضيات هندسيه متقدمه",
+            "credits": 3,
+            "prerequisites": [
+                "BAS 216"
+            ]
+        },
+        "UNR 261": {
+            "name": "اداب واخلاقيات المهنه",
+            "credits": 2,
+            "prerequisites": []
+        },
+        "CSE 212": {
+            "name": "انظمه قواعد البيانات",
+            "credits": 3,
+            "prerequisites": [
+                "CSE 112"
+            ]
+        },
+        "ECE 235": {
+            "name": "معالجه وتحليل الاشارات",
+            "credits": 3,
+            "prerequisites": [
+                "ECE 234"
+            ]
+        },
+        "ARI 271": {
+            "name": "تدريب (1)",
+            "credits": 0,
+            "prerequisites": [
+                "ARI 171"
+            ],
+            "constraints": [
+                "Pass/Fail"
+            ]
+        },
+        "Elective 1": {
+            "name": "مقرر اختياري (1)",
+            "credits": 3,
+            "prerequisites": []
+        },
+        "ECE 332": {
+            "name": "شبكات عصبونيه",
+            "credits": 3,
+            "prerequisites": [
+                "BAS 218"
+            ]
+        },
+        "CSE 311": {
+            "name": "برمجه (2)",
+            "credits": 3,
+            "prerequisites": [
+                "CSE 111",
+                "CSE 212"
+            ]
+        },
+        "CSE 313": {
+            "name": "اداره البيانات",
+            "credits": 3,
+            "prerequisites": [
+                "CSE 212"
+            ]
+        },
+        "CSE 317": {
+            "name": "معمار الحاسب",
+            "credits": 3,
+            "prerequisites": [
+                "CSE 141"
+            ]
+        },
+        "ECE 333": {
+            "name": "معالجه صور رقميه",
+            "credits": 3,
+            "prerequisites": [
+                "ECE 235"
+            ]
+        },
+        "CSE 351": {
+            "name": "التعلم العميق",
+            "credits": 3,
+            "prerequisites": [
+                "ECE 332"
+            ]
+        },
+        "CSE 315": {
+            "name": "الانظمه المتضمنه",
+            "credits": 3,
+            "prerequisites": [
+                "CSE 317"
+            ]
+        },
+        "Elective 2": {
+            "name": "مقرر اختياري (2)",
+            "credits": 3,
+            "prerequisites": []
+        },
+        "ECE 321": {
+            "name": "شبكات الاتصالات",
+            "credits": 3,
+            "prerequisites": [
+                "ECE 234"
+            ]
+        },
+        "ENG 312": {
+            "name": "اداره المشروعات",
+            "credits": 2,
+            "prerequisites": []
+        },
+        "ARI 381": {
+            "name": "مشروع (1)",
+            "credits": 3,
+            "prerequisites": [],
+            "constraints": [
+                "Cannot be taken in Summer",
+                "Level 300"
+            ]
+        },
+        "ARI 371": {
+            "name": "تدريب (2)",
+            "credits": 0,
+            "prerequisites": [
+                "ARI 271"
+            ],
+            "constraints": [
+                "Pass/Fail"
+            ]
+        },
+        "Elective 3": {
+            "name": "مقرر اختياري (3)",
+            "credits": 3,
+            "prerequisites": []
+        },
+        "Elective 4": {
+            "name": "مقرر اختياري (4)",
+            "credits": 3,
+            "prerequisites": []
+        },
+        "CSE 423": {
+            "name": "روبوتكس",
+            "credits": 3,
+            "prerequisites": [
+                "CSE 221"
+            ]
+        },
+        "UNR 471": {
+            "name": "التسويق",
+            "credits": 2,
+            "prerequisites": []
+        },
+        "ARI 481": {
+            "name": "مشروع (2)",
+            "credits": 3,
+            "prerequisites": [
+                "ARI 381"
+            ],
+            "constraints": [
+                "Cannot be taken in Summer",
+                "Level 400"
+            ]
+        },
+        "CSE 451": {
+            "name": "علم البيانات الكبيره",
+            "credits": 3,
+            "prerequisites": [
+                "CSE 313"
+            ]
+        },
+        "CSE 452": {
+            "name": "تطبيقات في الذكاء الاصطناعي",
+            "credits": 3,
+            "prerequisites": [
+                "CSE 351"
+            ]
+        },
+        "Elective 5": {
+            "name": "مقرر اختياري (5)",
+            "credits": 3,
+            "prerequisites": []
+        },
+        "ARI 482": {
+            "name": "مشروع (3)",
+            "credits": 3,
+            "prerequisites": [
+                "ARI 481"
+            ],
+            "constraints": [
+                "Cannot be taken in Summer"
+            ]
+        }
+    }
+}

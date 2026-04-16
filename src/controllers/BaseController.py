@@ -2,6 +2,7 @@ from helpers.config import get_settings, Settings
 import os
 import random
 import string
+import re
 
 class BaseController:
     
@@ -33,3 +34,14 @@ class BaseController:
             os.makedirs(database_path)
 
         return database_path
+    
+    def normalize_arabic(self, text: str) -> str:
+        if not text:
+            return ""
+        text = re.sub(r"[إأآا]", "ا", text)
+        text = re.sub(r"ى", "ي", text)
+        text = re.sub(r"ئ", "ي", text)
+        text = re.sub(r"ة", "ه", text)
+        text = re.sub(r"[\u064B-\u065F\u0640]", "", text) # مسح التشكيل
+        text = re.sub(r"\s+", " ", text)
+        return text.strip()

@@ -1,71 +1,88 @@
-from scrapling import Fetcher
 import urllib.parse
+from scrapling import Fetcher
 from .BaseAgent import BaseAgent
 from models.db_schemas import Project
+import asyncio
 
 class CourseAgent(BaseAgent):
-    def scrape_online_courses(self, course_name: str):
-        """
-        استخدام Scrapling للبحث عن كورسات متعلقة بالمادة على المنصات العالمية.
-        """
+    def __init__(self, vectordb_client, generation_client, mongo_client, template_parser, embedding_client):
+        super().__init__(vectordb_client, generation_client, mongo_client, template_parser, embedding_client)
+
+    def scrape_online_courses(self, query: str):
+        """كشط سريع للروابط المباشرة من منصات التعليم."""
         try:
             fetcher = Fetcher()
-            # البحث عن المادة في جوجل مخصص لكورسيرا ويوديمي
-            search_query = urllib.parse.quote(f"{course_name} site:coursera.org OR site:udemy.com")
+            arabic_keywords = ["عربي", "بالعربي", "arabic", "شرح عربي", "مترجم"]
+            is_arabic = any(kw in query.lower() for kw in arabic_keywords)
+            search_term = f"{query} شرح عربي" if is_arabic else query
+            
+            sites = "site:coursera.org OR site:udemy.com OR site:datacamp.com OR site:youtube.com/playlist"
+            search_query = urllib.parse.quote(f"{search_term} ({sites})")
             url = f"https://www.google.com/search?q={search_query}"
             
             page = fetcher.get(url)
-            # استخراج العناوين والروابط (تغيير الـ selectors بناءً على هيكل الصفحة)
             results = page.css(".tF2Cxc") 
             
             suggestions = []
-            for res in results[:3]: # نأخذ أول 3 نتائج فقط
-                title = res.css_first("h3").text if res.css_first("h3") else "كورس مقترح"
-                link = res.css_first("a").attributes.get("href")
-                suggestions.append(f"- {title}: {link}")
-                
+            for res in results[:5]:
+                title_elem = res.css_first("h3")
+                link_elem = res.css_first("a")
+                if title_elem and link_elem:
+                    suggestions.append(f"- {title_elem.text}: {link_elem.attributes.get('href')}")
+            
             return "\n".join(suggestions)
         except Exception as e:
-            self.logger.error(f"Course Scraping Error: {e}")
+            print(f"[DEBUG] Course Scraping Error: {e}")
             return ""
-        
-    async def process(self, project, query):
-        """
-        وكيل متخصص في البحث عن الكورسات الخارجية فقط عبر الإنترنت.
-        """
-        # 1. البحث عن الكورسات عبر الإنترنت مباشرة (تم تخطي الـ VectorDB)
-        # نقوم بتحسين الاستعلام ليتم البحث في المنصات التعليمية الكبرى فقط
-        enhanced_search_query = f"best online courses for {query} on Coursera Udemy edX YouTube"
-        online_results = await self.web_search(enhanced_search_query)
 
-        # 2. إعداد الـ System Prompt (شخصية الدحيح كخبير في التعلم الذاتي)
+    async def process_stream(self, project, query: str, chat_history: list = [], limit: int = 5):
+        """توليد الكورسات بنظام Stream (Stateless)"""
+        print(f"\n[DEBUG] === Starting CourseAgent (Stateless) for query: '{query}' ===")
+
+        # 1. البحث والكشط
+        arabic_keywords = ["عربي", "بالعربي", "arabic", "شرح عربي"]
+        is_arabic = any(kw in query.lower() for kw in arabic_keywords)
+        lang_modifier = "in Arabic (شرح عربي)" if is_arabic else ""
+        
+        enhanced_search_query = f"best online courses or playlists for {query} {lang_modifier} on Coursera, Udemy, DataCamp, YouTube"
+        online_results = await self.web_search(enhanced_search_query)
+        loop = asyncio.get_event_loop()
+        direct_links = await loop.run_in_executor(None, self.scrape_online_courses, query)
+
+        # 2. الدستور (System Prompt)
         system_prompt = (
-            "أنت مرشد أكاديمي ذكي بأسلوب 'الدحيح'. وظيفتك هي مساعدة الطلاب في العثور على أفضل الكورسات "
-            "على الإنترنت (مثل Coursera و Udemy و YouTube). "
-            "ركز تماماً على الروابط والمحتوى الخارجي ولا تتحدث عن لوائح الكلية. "
-            "يجب أن تكون إجابتك بالعامية المصرية الراقية، ممتعة، ومليئة بالتشجيع."
+            "أنت 'الدحيح'، خبير التعلم الذاتي العالمي. "
+            "مهمتك هي ترشيح كورسات خارجية من (Coursera, Udemy, DataCamp, YouTube) بأسلوبك الكوميدي التعليمي المشهور. "
+            "استخدم جملك الشهيرة مثل: 'يا عزيزي'، 'بص يا غالي'. "
+            "إذا لاحظت أن الطالب يريد محتوى 'عربي'، ركز بشدة على ترشيح قنوات يوتيوب عربية أو كورسات مترجمة. "
+            "لو الطالب سألك عن الكلية، قوله: 'دي عند دكاترة الكلية يا عزيزي، أنا هنا عشان أفتحلك آفاق العالم الخارجي!'"
         )
 
-        # 3. بناء الـ Full Prompt لإرساله للـ LLM
-        full_prompt = f"""
-بناءً على نتائج البحث الحالية من الإنترنت:
+        context_aware_query = f"""
+إليك نتائج البحث من الإنترنت:
 {online_results}
 
-سؤال الطالب: {query}
+روابط مباشرة مقترحة للكورسات:
+{direct_links if direct_links else "لا توجد روابط مباشرة حالياً"}
 
-إجابة 'الدحيح' المقترحة (مع ذكر الروابط وأهمية كل كورس):"""
+سؤال الطالب الحالي: {query}
+"""
 
-        chat_history = [
-            self.generation_client.construct_prompt(
-                prompt=system_prompt, 
-                role=self.generation_client.enums.SYSTEM.value
-            )
-        ]
+        # 3. معالجة الذاكرة السابقة للـ LLM
+        final_chat_history = []
+        if chat_history:
+            for msg in chat_history:
+                final_chat_history.append(
+                    self.generation_client.construct_prompt(prompt=msg['content'], role=msg['role'])
+                )
 
-        # 4. توليد الرد النهائي باستخدام الـ LLM
-        answer = self.generation_client.generate_response(
-            prompt=full_prompt, 
-            chat_history=chat_history
-        )
-        
-        return answer, full_prompt, chat_history
+        # 4. التوليد (Streaming) - بدون أي تخزين
+        async for chunk in self.generation_client.generate_stream(
+            prompt=system_prompt,
+            user_query=context_aware_query,
+            chat_history=final_chat_history,
+            temperature=0.75
+        ):
+            clean_chunk = chunk.replace("</thinking>", "").replace("<thinking>", "")
+            if clean_chunk:
+                yield clean_chunk
