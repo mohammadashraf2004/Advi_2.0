@@ -7,11 +7,11 @@
 1) Download and install MiniConda from [here](https://docs.anaconda.com/free/miniconda/#quick-command-line-install)
 2) Create a new environment using the following command:
 ```bash
-$ conda create -n mini-rag python=3.8
+$ conda create -n advi python=3.8
 ```
 3) Activate the environment:
 ```bash
-$ conda activate mini-rag
+$ conda activate advi
 ```
 
 ### (Optional) Setup you command line interface for better readability
@@ -57,9 +57,3 @@ $ sudo docker compose up -d
 ```bash
 $ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
-
-## POSTMAN Collection
-
-Download the POSTMAN collection from [/assets/mini-rag-app.postman_collection.json](/assets/mini-rag-app.postman_collection.json)
-
-#playwright
