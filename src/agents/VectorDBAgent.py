@@ -17,7 +17,13 @@ class VectorDBAgent(BaseAgent):
         super().__init__(vectordb_client, generation_client, mongo_client,
                          template_parser, embedding_client)
         self.reranker_client = reranker_client
-        self.cache_threshold = 0.92
+        
+        # ✅ FIXED: Strict threshold to prevent false cache hits on similar but distinct questions
+        self.cache_threshold = 0.98
+        
+        # ✅ FIXED: Explicit flag so the Orchestrator knows it can safely check vector caching
+        self.is_vector_agent = True  
+
         self._qdrant         = getattr(vectordb_client, 'client', vectordb_client)
 
         from controllers.NLPController import NLPController

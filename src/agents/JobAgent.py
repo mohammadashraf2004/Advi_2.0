@@ -14,6 +14,10 @@ class JobAgent(BaseAgent):
                  template_parser, embedding_client):
         super().__init__(vectordb_client, generation_client, mongo_client,
                          template_parser, embedding_client)
+                         
+        # ✅ FIXED: Explicitly tell Orchestrator NOT to attempt vector caching here
+        self.is_vector_agent = False 
+        
         self._headers = {
             "User-Agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -136,7 +140,7 @@ class JobAgent(BaseAgent):
     # ------------------------------------------------------------------
     # process_stream — unchanged structure, all bugs above now fixed
     # ------------------------------------------------------------------
-    async def process_stream(self, project, query, chat_history=None, limit=5):
+    async def process_stream(self, project, query, chat_history=None, limit=5, skip_evaluation=False, **kwargs):
         if chat_history is None:
             chat_history = []
 
@@ -149,7 +153,6 @@ class JobAgent(BaseAgent):
         if "عن بعد" in query or "remote" in query.lower():
             location_context = "Remote"
 
-        # ✅ _extract_job_title now exists
         job_title = self._extract_job_title(query)
         logger.info(f"Extracted: '{job_title}' | Location: '{location_context}'")
 

@@ -166,7 +166,7 @@ class GraduationPlanner:
 
                 for pre in course.get('prerequisites', []):
                     if pre not in courses_passed_so_far:
-                        all_errors.append(f"الفصل {semester}: {course_name} ({course_code}) 🚫 (المتطلب: {pre} لم يتم اجتيازه)")
+                        all_errors.append(f"الفصل {semester}: {course_name} ({course_code}) 🚫 (المتطلب: {pre} {self.get_course_info(pre).get('name', pre)} لم يتم اجتيازه)")
                 
                 if "Cannot be taken in Summer" in course.get('constraints', []) and is_summer:
                      all_errors.append(f"الفصل {semester}: {course_name} ({course_code}) 🚫 (لا يمكن أخذها في الصيف)")
