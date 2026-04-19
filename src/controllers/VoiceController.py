@@ -218,12 +218,9 @@ class VoiceController:
                     except asyncio.CancelledError: pass
 
                 # ── Task 5: Receive from Gemini → send to browser ─────────
-                # ── Task 5: Receive from Gemini → send to browser ─────────
                 async def receive_from_gemini():
                     try:
-                        # ✅ FIX: Outer while loop added!
-                        # The Gemini receive iterator naturally exits after tool calls.
-                        # We must re-enter it to keep the session alive for the next question.
+                        
                         while state["client_alive"]:
                             async for response in session.receive():
                                 if not state["client_alive"]: break

@@ -7,7 +7,6 @@ from .BaseAgent import BaseAgent
 from models.db_schemas import Project
 from qdrant_client.http.models import PointStruct
 
-# courses_db.json is in the same directory as this agent file
 _COURSES_DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'courses_db.json')
 
 
@@ -18,10 +17,10 @@ class VectorDBAgent(BaseAgent):
                          template_parser, embedding_client)
         self.reranker_client = reranker_client
         
-        # ✅ FIXED: Strict threshold to prevent false cache hits on similar but distinct questions
+        
         self.cache_threshold = 0.98
         
-        # ✅ FIXED: Explicit flag so the Orchestrator knows it can safely check vector caching
+        
         self.is_vector_agent = True  
 
         self._qdrant         = getattr(vectordb_client, 'client', vectordb_client)
