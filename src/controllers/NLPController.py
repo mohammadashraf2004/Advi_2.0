@@ -8,9 +8,6 @@ from langchain_community.retrievers import BM25Retriever
 from langchain_core.documents import Document
 from models.db_schemas import RetrievalDocument
 import logging
-
-# 🛠️ FIX 1: Removed Orchestrator import to break the Death Loop
-
 import hashlib
 import time
 from dataclasses import dataclass, field
@@ -80,12 +77,10 @@ class NLPController:
 
         self.semantic_cache = SemanticCache(
             embedding_client=embedding_client,
-            similarity_threshold=0.92,  # اضبط هذه القيمة حسب التجربة
+            similarity_threshold=0.92,
             ttl_seconds=3600,
             max_size=200
         )
-        
-        # 🛠️ FIX 1: Deleted self.orchestrator = Orchestrator(...)
 
     def create_collection_name(self, project_id: str):
         return f"collection_{project_id}".strip()
@@ -137,9 +132,9 @@ class NLPController:
     
     def normalize_arabic(self, text: str) -> str:
         text = re.sub(r"[إأآا]", "ا", text)
-        text = re.sub(r"ى", "ي", text)   # ← this converts ى to ي
+        text = re.sub(r"ى", "ي", text)
         text = re.sub(r"ئ", "ي", text)
-        text = re.sub(r"ة", "ه", text)   # ← this converts ة to ه
+        text = re.sub(r"ة", "ه", text)
         text = re.sub(r"[\u064B-\u065F\u0640]", "", text)
         text = re.sub(r"\s+", " ", text)
         return text.strip()
@@ -156,7 +151,6 @@ class NLPController:
         if re.search(r'(ادار|إدار|هيكل|عميد|وكيل|رئيس)', query, re.IGNORECASE):
             enriched_query += " الهيكل الإداري للبرامج المجلس الأكاديمي المدير التنفيذي المنسق العام"
         
-        # 🌟 دعم المصطلحات الإنجليزية للمستويات
         if re.search(r'(level|ليفل|مستوى|فرقة)', query, re.IGNORECASE):
             enriched_query += " المستوى الدراسي الخطة الدراسية المقررات الإجبارية"
 
@@ -168,12 +162,12 @@ class NLPController:
 
         return enriched_query
     
-    # 🛠️ FIX 2: Rewritten to return a dictionary so Orchestrator doesn't crash on .get()
     async def rewrite_query(self, query: str, chat_history: list = []) -> dict:
         if not chat_history:
             return {"intent": "NEW_TOPIC", "refined_query": query}
 
-        recent = chat_history[-4:] if len(chat_history) >= 4 else chat_history
+        # Cut history to the last 2 turns ONLY
+        recent = chat_history[-2:] if len(chat_history) >= 2 else chat_history
         history_text = ""
         for turn in recent:
             role    = "U" if turn.get("role") == "user" else "A"
@@ -182,16 +176,16 @@ class NLPController:
                 content = content[:200] + "..." + content[-100:]
             history_text += f"{role}: {content}\n"
 
-        # Put the JSON template first so the model completes it rather than narrating
         prompt = f"""Complete this JSON. Output ONLY the JSON object, no other text.
 
     {{"intent": "RELATED or NEW_TOPIC", "refined_query": "the resolved Arabic question"}}
 
     Rules:
-    - RELATED if query has pronouns (له، لها، عليه، عنه، منه، فيه، ساعاته، متطلبه، درجاته، اسمها، كودها)
-    - RELATED if query starts with (وكم، وما، وهل، وأين، ومتى)  
-    - NEW_TOPIC if completely different subject with no pronoun link
-    - For RELATED: refined_query must be a clean Arabic question only, NO explanations
+    1. CRITICAL: The `refined_query` MUST strictly reflect the user's LATEST "Current question".
+    2. CRITICAL: ONLY use the "Conversation" to resolve missing pronouns. NEVER change the topic of the current question to match an older question. 
+    3. If the current question is a completely new topic (e.g. "جدول الgpa", "وظائف"), output it exactly as is and mark it NEW_TOPIC.
+    4. RELATED if query has pronouns (له، لها، عليه، عنه، منه، فيه، ساعاته، متطلبه، درجاته، اسمها، كودها) or starts with (وكم، وما، وهل، وأين، ومتى).
+    5. NEW_TOPIC if it's a completely different subject.
 
     Conversation:
     {history_text.strip()}
@@ -208,15 +202,18 @@ class NLPController:
 
             clean = response.strip().replace("```json", "").replace("```", "").strip()
 
-            # Try direct JSON parse
             start, end = clean.find('{'), clean.rfind('}')
             if start != -1 and end != -1:
                 try:
                     result = json.loads(clean[start:end+1])
-                    intent        = "RELATED" if "RELATED" in str(result.get("intent","")).upper() else "NEW_TOPIC"
-                    refined_query = result.get("refined_query", query).strip() or query
+                    intent = "RELATED" if "RELATED" in str(result.get("intent","")).upper() else "NEW_TOPIC"
+                    
+                    # 💡 THE FIX: Force the original query if the topic is new
+                    if intent == "NEW_TOPIC":
+                        refined_query = query
+                    else:
+                        refined_query = result.get("refined_query", query).strip() or query
 
-                    # ✅ CRITICAL: reject if refined_query looks like an explanation (>80 chars or contains quotes)
                     if len(refined_query) > 120 or '"' in refined_query or 'الضمير' in refined_query:
                         print(f"[WARN] refined_query looks like prose, reverting to original: {refined_query[:60]}")
                         refined_query = query
@@ -226,17 +223,18 @@ class NLPController:
                 except json.JSONDecodeError:
                     pass
 
-            # Fallback: detect intent from prose, but ALWAYS use original query as refined
             print(f"[WARN] rewrite_query got prose: {clean[:80]}")
             intent = "RELATED" if re.search(r'\bRELATED\b', clean, re.IGNORECASE) else "NEW_TOPIC"
 
-            # For prose fallback, try to find a clean short Arabic question
-            # Look for text between quotes that looks like a question
-            quoted = re.findall(r'"([^"]{5,80})"', clean)
-            arabic_questions = [q for q in quoted if re.search(r'[\u0600-\u06FF]', q)
-                            and not any(w in q for w in ['الضمير', 'يعود', 'السياق', 'السؤال الحالي'])]
+            # 💡 THE FIX (Fallback Mode): Force the original query if the topic is new
+            if intent == "NEW_TOPIC":
+                refined_query = query
+            else:
+                quoted = re.findall(r'"([^"]{5,80})"', clean)
+                arabic_questions = [q for q in quoted if re.search(r'[\u0600-\u06FF]', q)
+                                and not any(w in q for w in ['الضمير', 'يعود', 'السياق', 'السؤال الحالي'])]
 
-            refined_query = arabic_questions[0].strip() if arabic_questions else query
+                refined_query = arabic_questions[0].strip() if arabic_questions else query
 
             print(f"[DEBUG] 🪄 Prose fallback: intent={intent}, refined='{refined_query}'")
             return {"intent": intent, "refined_query": refined_query}
@@ -255,11 +253,8 @@ class NLPController:
         if cached is not None:
             return cached[:limit]
 
-        # الخطوة 1: إثراء محلي سريع (بدون LLM)
         local_enriched = self._enrich_query_locally(text)
         final_search_query = local_enriched
-
-        # الخطوة 2: إثراء بالـ LLM فقط إذا لم يجد الإثراء المحلي شيئاً
 
         print(f"🪄 FINAL QUERY: '{final_search_query}'")
 
@@ -267,7 +262,6 @@ class NLPController:
         collection_name  = self.create_collection_name(project_id=project.project_id)
         internal_k       = max(15, limit * 3)
 
-        # Qdrant semantic search
         vector = self.embedding_client.embed_text(
             text=final_search_query,
             document_type=DocumentTypeEnum.QUERY.value
@@ -281,7 +275,6 @@ class NLPController:
             )
             semantic_results = qdrant_output or []
 
-        # BM25 keyword search
         cursor = self.mongo_client.chunks.find({"project_id": str(project.project_id)})
         raw_mongo_documents = await cursor.to_list(length=None)
 
@@ -301,7 +294,6 @@ class NLPController:
         if not semantic_results and not keyword_results:
             return []
 
-        # RRF merge
         rrf_scores = {}
         k_penalty  = 60
         for rank, doc in enumerate(semantic_results):
@@ -313,16 +305,11 @@ class NLPController:
         sorted_merged = sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)
         candidates    = [RetrievalDocument(score=score, text=t) for t, score in sorted_merged]
 
-        # Reranker
-        # Reranker
         if hasattr(self, 'reranker_client') and self.reranker_client:
             final_results = self.reranker_client.rerank(query=final_search_query, docs=candidates, top_n=limit)
         else:
             final_results = candidates[:limit]
     
-        # ✅ CACHE AND RETURN: Safely store the results before exiting
         self.semantic_cache.set(text, query_embedding, final_results)
         return final_results
     
-    # 🛠️ FIX 1: Removed answer_rag_question and answer_rag_question_stream 
-    # The Orchestrator is the main router for the endpoint, not the NLPController.

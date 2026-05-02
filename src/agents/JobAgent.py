@@ -1,9 +1,8 @@
-import urllib.parse
 import re
 import asyncio
 import logging
-import feedparser          # pip install feedparser --break-system-packages
-from scrapling import Fetcher
+import urllib.parse
+import feedparser
 from .BaseAgent import BaseAgent
 
 logger = logging.getLogger(__name__)
@@ -14,156 +13,165 @@ class JobAgent(BaseAgent):
                  template_parser, embedding_client):
         super().__init__(vectordb_client, generation_client, mongo_client,
                          template_parser, embedding_client)
-                         
-        # ✅ FIXED: Explicitly tell Orchestrator NOT to attempt vector caching here
-        self.is_vector_agent = False 
-        
-        self._headers = {
-            "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/124.0.0.0 Safari/537.36"
-            ),
-            "Accept-Language": "en-US,en;q=0.9,ar;q=0.8",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        }
 
-    # ------------------------------------------------------------------
-    # Bug 1 fix — this method was missing entirely
-    # ------------------------------------------------------------------
+    # ── Extract clean job title from natural language query ───────────────
     def _extract_job_title(self, query: str) -> str:
-        """استخراج مسمى الوظيفة من السؤال الطبيعي."""
-        # English terms are more precise for scraping job boards
-        english_terms = re.findall(r'[A-Za-z][A-Za-z\s\+\#\.]{2,}', query)
-        if english_terms:
-            return max(english_terms, key=len).strip()
+        # English terms work better for job scraping (LinkedIn, Wuzzuf, Bayt)
+        english = re.findall(r'[A-Za-z][A-Za-z\s\+\#\.]{2,}', query)
+        if english:
+            return max(english, key=len).strip()
 
-        # Strip common Arabic filler words, keep the technical term
-        stop_words = {
-            'ابحث', 'لي', 'عن', 'وظائف', 'في', 'مجال', 'فرص', 'عمل',
-            'هل', 'كيف', 'تدريب', 'فرصة', 'وظيفة', 'وظيفه', 'شغل',
-            'internship', 'ايه', 'إيه', 'عايز', 'أوظف', 'أشتغل'
+        # Strip Arabic filler words and return core noun
+        stop = {
+            'ابحث','لي','عن','وظائف','في','مجال','فرص','عمل','هل','كيف',
+            'تدريب','internship','فرصة','وظيفة','وظيفه','شغل','ايه','ما'
         }
-        words = [w for w in query.split() if w not in stop_words]
+        words = [w for w in query.split() if w not in stop]
         return " ".join(words[:4]).strip() or query
 
-    # ------------------------------------------------------------------
-    # Bug 4 fix — use feedparser for RSS (css() doesn't work on XML)
-    # Bug 3 fix — single Fetcher instance, created once per method call
-    # Bug 2 fix — dead HTML scrapers removed, only RSS strategy kept
-    # ------------------------------------------------------------------
-    def _scrape_multiple_sites(self, job_title: str, location: str) -> str:
-        all_jobs = []
-        q     = urllib.parse.quote(job_title)
-        loc_q = urllib.parse.quote(location)
-
-        # ── Strategy 1: Wuzzuf RSS via feedparser ──────────────────────
+    # ── Wuzzuf RSS ────────────────────────────────────────────────────────
+    def _scrape_wuzzuf_rss(self, job_title: str) -> list:
+        jobs = []
         try:
-            rss_url = f"https://wuzzuf.net/search/jobs/feed/?q={q}"
-            feed    = feedparser.parse(rss_url)
-
+            q   = urllib.parse.quote(job_title)
+            url = f"https://wuzzuf.net/search/jobs/feed/?q={q}&a=hpb"
+            feed = feedparser.parse(url)
             for entry in feed.entries[:5]:
                 title   = entry.get("title", "").strip()
                 link    = entry.get("link", "").strip()
                 summary = entry.get("summary", "")
-                # Company name often appears as the first line of the summary
-                company = summary.split("<")[0].strip()[:80] if summary else "غير محدد"
-
+                # Extract company from summary
+                company_m = re.search(r'<b>([^<]+)</b>', summary)
+                company   = company_m.group(1).strip() if company_m else "غير محدد"
                 if title and link:
-                    all_jobs.append(
-                        f"💼 [Wuzzuf] {title}\n"
-                        f"🏢 {company or 'غير محدد'}\n"
-                        f"🔗 {link}"
-                    )
-            logger.info(f"Wuzzuf RSS: {len(all_jobs)} entries found")
+                    jobs.append(f"💼 **[Wuzzuf] {title}**\n🏢 {company}\n🔗 {link}")
+            logger.info(f"Wuzzuf RSS: {len(jobs)} jobs")
         except Exception as e:
             logger.warning(f"Wuzzuf RSS failed: {e}")
+        return jobs
 
-        # ── Strategy 2: Bayt RSS via feedparser ────────────────────────
+    # ── Bayt RSS ──────────────────────────────────────────────────────────
+    def _scrape_bayt_rss(self, job_title: str) -> list:
+        jobs = []
         try:
-            country = "egypt" if ("egypt" in location.lower() or "مصر" in location) else "ae"
-            rss_url = f"https://www.bayt.com/en/{country}/jobs/rss/?q={q}"
-            feed    = feedparser.parse(rss_url)
-
-            bayt_jobs = []
-            for entry in feed.entries[:4]:
-                title = entry.get("title", "").strip()
-                link  = entry.get("link", "").strip()
+            q   = urllib.parse.quote(job_title)
+            url = f"https://www.bayt.com/en/egypt/jobs/?q={q}&rss=1"
+            feed = feedparser.parse(url)
+            for entry in feed.entries[:5]:
+                title   = entry.get("title", "").strip()
+                link    = entry.get("link",  "").strip()
+                # Company is usually in the title: "Job Title at Company"
+                if " at " in title:
+                    parts   = title.split(" at ", 1)
+                    title   = parts[0].strip()
+                    company = parts[1].strip()
+                else:
+                    company = "غير محدد"
                 if title and link:
-                    bayt_jobs.append(
-                        f"💼 [Bayt] {title}\n"
-                        f"🔗 {link}"
-                    )
-            all_jobs += bayt_jobs
-            logger.info(f"Bayt RSS: {len(bayt_jobs)} entries found")
+                    jobs.append(f"💼 **[Bayt] {title}**\n🏢 {company}\n🔗 {link}")
+            logger.info(f"Bayt RSS: {len(jobs)} jobs")
         except Exception as e:
             logger.warning(f"Bayt RSS failed: {e}")
+        return jobs
 
-        # ── Strategy 3: Forasna via Fetcher (HTML, lightweight) ─────────
-        if len(all_jobs) < 3:
-            try:
-                fetcher   = Fetcher()
-                forasna_q = urllib.parse.quote(job_title)
-                page      = fetcher.get(
-                    f"https://forasna.com/jobs?q={forasna_q}",
-                    headers=self._headers,
-                    timeout=10
+    # ── LinkedIn public search (no auth) ──────────────────────────────────
+    def _scrape_linkedin(self, job_title: str, location: str) -> list:
+        """
+        LinkedIn blocks scraping but their public jobs search page is accessible.
+        We use feedparser on their job alert RSS (no login needed for Egypt).
+        Falls back to a direct search link if feed is empty.
+        """
+        jobs = []
+        try:
+            q    = urllib.parse.quote(job_title)
+            loc  = urllib.parse.quote(location)
+            # LinkedIn public RSS feed for job search (works without login)
+            url  = (
+                f"https://www.linkedin.com/jobs/search/?keywords={q}"
+                f"&location={loc}&f_TPR=r604800"  # last 7 days
+            )
+            # LinkedIn doesn't expose RSS publicly — provide direct search link
+            # Try feedparser on their undocumented feed endpoint
+            rss_url = f"https://www.linkedin.com/jobs/search.rss?keywords={q}&location={loc}&trk=api"
+            feed    = feedparser.parse(rss_url)
+
+            if feed.entries:
+                for entry in feed.entries[:5]:
+                    title   = entry.get("title", "").strip()
+                    link    = entry.get("link",  "").strip()
+                    company = entry.get("author", "غير محدد")
+                    if title and link:
+                        jobs.append(f"💼 **[LinkedIn] {title}**\n🏢 {company}\n🔗 {link}")
+                logger.info(f"LinkedIn RSS: {len(jobs)} jobs")
+            else:
+                # LinkedIn RSS unavailable — provide direct search link
+                jobs.append(
+                    f"💼 **[LinkedIn] ابحث عن '{job_title}' في {location}**\n"
+                    f"🔗 {url}"
                 )
-                # Forasna renders cards as <div class="job-card"> with an <a> title
-                for card in page.css("div.job-card, article.job")[:4]:
-                    title_el   = card.css_first("h2 a, h3 a, .job-title a")
-                    company_el = card.css_first(".company-name, .employer-name")
-                    if not title_el:
-                        continue
-                    title   = title_el.text.strip()
-                    href    = title_el.attributes.get("href", "")
-                    link    = f"https://forasna.com{href}" if href.startswith("/") else href
-                    company = company_el.text.strip() if company_el else "غير محدد"
-                    all_jobs.append(f"💼 [Forasna] {title}\n🏢 {company}\n🔗 {link}")
-                logger.info(f"Forasna HTML: found additional jobs, total now {len(all_jobs)}")
-            except Exception as e:
-                logger.warning(f"Forasna scrape failed: {e}")
+                logger.info("LinkedIn: provided direct search link")
+        except Exception as e:
+            logger.warning(f"LinkedIn scrape failed: {e}")
+            q   = urllib.parse.quote(job_title)
+            loc = urllib.parse.quote(location)
+            jobs.append(
+                f"💼 **[LinkedIn] ابحث مباشرة**\n"
+                f"🔗 https://www.linkedin.com/jobs/search/?keywords={q}&location={loc}"
+            )
+        return jobs
 
-        # ── Fallback: direct search links if everything failed ──────────
-        if not all_jobs:
-            logger.warning("All scrapers failed — returning direct search links")
+    # ── Master scraper ────────────────────────────────────────────────────
+    def _scrape_all(self, job_title: str, location: str) -> str:
+        logger.info(f"Scraping: '{job_title}' in '{location}'")
+
+        wuzzuf_jobs  = self._scrape_wuzzuf_rss(job_title)
+        bayt_jobs    = self._scrape_bayt_rss(job_title)
+        linkedin_jobs = self._scrape_linkedin(job_title, location)
+
+        all_jobs = wuzzuf_jobs + bayt_jobs + linkedin_jobs
+
+        if not any(wuzzuf_jobs + bayt_jobs):
+            # All RSS failed — provide fallback direct links
+            q   = urllib.parse.quote(job_title)
+            loc = urllib.parse.quote(location)
             return (
-                f"لم أجد وظائف مباشرة الآن. إليك روابط البحث المباشر:\n\n"
+                f"⚠️ لم تُرجع الكاشطات نتائج مباشرة الآن. إليك روابط البحث:\n\n"
                 f"- **Wuzzuf**: https://wuzzuf.net/search/jobs/?q={q}\n"
                 f"- **Bayt**: https://www.bayt.com/en/egypt/jobs/?q={q}\n"
-                f"- **LinkedIn**: https://www.linkedin.com/jobs/search?keywords={q}&location={loc_q}\n"
-                f"- **Forasna**: https://forasna.com/jobs?q={q}"
+                f"- **LinkedIn**: https://www.linkedin.com/jobs/search?keywords={q}&location={loc}\n"
+                f"- **Indeed**: https://eg.indeed.com/jobs?q={urllib.parse.quote(job_title)}"
             )
 
         return "\n\n".join(all_jobs)
 
-    # ------------------------------------------------------------------
-    # process_stream — unchanged structure, all bugs above now fixed
-    # ------------------------------------------------------------------
-    async def process_stream(self, project, query, chat_history=None, limit=5, skip_evaluation=False, **kwargs):
+    # ── process_stream ────────────────────────────────────────────────────
+    async def process_stream(self, project, query: str,
+                             chat_history: list = None, limit: int = 5):
+        """
+        NOTE: JobAgent does NOT accept skip_evaluation.
+        That parameter only exists on VectorDBAgent.
+        """
         if chat_history is None:
             chat_history = []
 
         logger.info(f"JobAgent query: '{query}'")
 
-        # Location detection
-        location_context = "Egypt"
+        # Detect location from query
+        location = "Egypt"
         if "منصورة" in query or "mansoura" in query.lower():
-            location_context = "Mansoura, Egypt"
-        if "عن بعد" in query or "remote" in query.lower():
-            location_context = "Remote"
+            location = "Mansoura, Egypt"
+        elif "قاهرة" in query or "cairo" in query.lower():
+            location = "Cairo, Egypt"
+        elif "عن بعد" in query or "remote" in query.lower():
+            location = "Egypt (Remote)"
 
         job_title = self._extract_job_title(query)
-        logger.info(f"Extracted: '{job_title}' | Location: '{location_context}'")
+        logger.info(f"Extracted: '{job_title}' | location: '{location}'")
 
-        # Run blocking scraper in thread pool
+        # Run scraping in thread pool (blocking IO, don't freeze event loop)
         loop            = asyncio.get_running_loop()
         aggregated_jobs = await loop.run_in_executor(
-            None, self._scrape_multiple_sites, job_title, location_context
-        )
-
-        web_info = await self.web_search(
-            f"أهم المهارات المطلوبة لوظيفة {job_title} في {location_context} 2025"
+            None, self._scrape_all, job_title, location
         )
 
         system_prompt = """أنت مستشار توظيف خبير. لديك بيانات وظائف حقيقية من منصات متعددة.
@@ -171,21 +179,18 @@ class JobAgent(BaseAgent):
 1. عرض الوظائف المستخرجة مع شركاتها وروابطها بوضوح.
 2. ملخص لأهم 3-5 مهارات مشتركة مطلوبة.
 3. نصيحة واحدة عملية للتقديم.
-إذا كانت النتائج روابط بحث فقط، وضّح ذلك للطالب واشرح كيف يستخدم الرابط."""
+إذا كانت الوظائف روابط بحث فقط (بسبب فشل الكاشطات)، وضّح ذلك للطالب واشرح كيف يستخدم الرابط."""
 
         context_query = f"""[الوظائف المستخرجة]:
 {aggregated_jobs}
 
-[تحليل سوق العمل]:
-{web_info or 'لا توجد بيانات إضافية.'}
-
 سؤال الطالب: {query}"""
 
-        final_chat_history = [
+        final_history = [
             self.generation_client.construct_prompt(prompt=system_prompt, role="system")
         ]
         for msg in chat_history:
-            final_chat_history.append(
+            final_history.append(
                 self.generation_client.construct_prompt(
                     prompt=msg["content"], role=msg["role"]
                 )
@@ -193,9 +198,9 @@ class JobAgent(BaseAgent):
 
         async for chunk in self.generation_client.generate_stream(
             prompt=context_query,
-            chat_history=final_chat_history,
+            chat_history=final_history,
             temperature=0.3
         ):
-            clean = chunk.replace("</thinking>", "").replace("<thinking>", "")
+            clean = chunk.replace("<thinking>", "").replace("</thinking>", "")
             if clean:
                 yield clean

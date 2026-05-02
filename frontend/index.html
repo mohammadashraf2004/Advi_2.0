@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,7 +17,6 @@
         }
         body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:var(--white); color:var(--gray-dark); overflow:hidden; }
 
-        /* Header */
         .header { background:linear-gradient(135deg,var(--primary-navy),var(--dark-navy)); color:var(--white); padding:1.5rem 2rem; display:flex; justify-content:space-between; align-items:center; box-shadow:var(--shadow-lg); z-index:100; }
         .header-left { display:flex; align-items:center; gap:1rem; }
         .logo { font-size:1.8rem; font-weight:700; color:var(--gold); text-decoration:none; letter-spacing:1px; }
@@ -26,10 +25,8 @@
         .student-info { font-size:.9rem; text-align:right; }
         .student-id { color:var(--light-gold); font-size:.8rem; }
 
-        /* Layout */
         .app-layout { display:flex; height:calc(100vh - 80px); width:100vw; overflow:hidden; }
 
-        /* Sidebar */
         .nav-sidebar { width:280px; background:var(--dark-navy); color:var(--white); display:flex; flex-direction:column; padding:1.5rem 1rem; box-shadow:2px 0 10px rgba(0,0,0,.1); z-index:10; }
         .nav-section { display:flex; flex-direction:column; }
         .nav-brand-menu { font-size:.85rem; text-transform:uppercase; letter-spacing:1px; color:rgba(255,255,255,.5); margin-bottom:1rem; padding-left:.5rem; }
@@ -37,8 +34,6 @@
         .nav-item:hover { background:rgba(255,255,255,.1); color:var(--white); }
         .nav-item.active { background:var(--primary-navy); color:var(--gold); border-left:4px solid var(--gold); }
         .nav-item span { font-size:1.2rem; }
-        .nav-item.upload-btn { margin-top:1rem; background:linear-gradient(135deg,var(--gold),#FFC700); color:var(--primary-navy); border:none; justify-content:center; }
-        .nav-item.upload-btn:hover { transform:translateY(-2px); }
         .sidebar-divider { border:0; height:1px; background:rgba(255,255,255,.1); margin:1.5rem 0; }
         .history-section { flex:1; overflow:hidden; display:flex; flex-direction:column; }
         .history-content { flex:1; overflow-y:auto; padding-right:5px; }
@@ -48,11 +43,9 @@
         .history-item-time { font-size:.7rem; color:rgba(255,255,255,.5); }
         .empty-history { text-align:center; color:rgba(255,255,255,.4); padding:2rem 1rem; font-size:.85rem; }
 
-        /* Views */
         .view-container { flex:1; display:none; height:100%; overflow:hidden; }
         .view-container.active { display:flex; }
 
-        /* Chat */
         .chat-area { flex:1; display:flex; flex-direction:column; background:var(--white); }
         .chat-messages { flex:1; overflow-y:auto; padding:2rem; display:flex; flex-direction:column; gap:1rem; }
 
@@ -63,59 +56,83 @@
         .message.assistant .message-avatar { background:linear-gradient(135deg,var(--primary-navy),var(--light-navy)); color:var(--white); }
         .message.user .message-avatar { background:linear-gradient(135deg,var(--gold),#FFA500); color:var(--primary-navy); }
 
-        /* Chat Bubble constraints and scrolling for wide tables */
-        .message-content { max-width:85%; overflow-x:auto; padding:1rem; border-radius:var(--border-radius); line-height:1.6; word-wrap:break-word; }
+        .message-content { max-width:88%; padding:1rem; border-radius:var(--border-radius); line-height:1.7; word-wrap:break-word; }
         .message.user .message-content { background:var(--primary-navy); color:var(--white); border-bottom-right-radius:2px; white-space:pre-wrap; }
+
+        /* ── Assistant bubble: RTL for Arabic text ── */
         .message.assistant .message-content {
-            background:var(--light-navy); color:var(--white);
+            background:var(--light-navy);
+            color:var(--white);
             border-bottom-left-radius:2px;
-            direction:rtl; text-align:right;
+            direction:rtl;
+            text-align:right;
         }
 
-        /* Custom scrollbar specifically for inner chat bubbles */
-        .message.assistant .message-content::-webkit-scrollbar { height: 6px; }
-        .message.assistant .message-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 10px; }
-        .message.assistant .message-content::-webkit-scrollbar-thumb:hover { background: var(--gold); }
-
-        /* Markdown in assistant bubble */
-        .message.assistant .message-content p       { margin:0 0 .6rem; }
+        /* Prose inside assistant bubble */
+        .message.assistant .message-content p       { margin:0 0 .7rem; }
         .message.assistant .message-content p:last-child { margin-bottom:0; }
         .message.assistant .message-content ul,
-        .message.assistant .message-content ol      { margin:.4rem 0 .6rem; padding-right:1.2rem; padding-left:0; }
-        .message.assistant .message-content li      { margin-bottom:.3rem; }
+        .message.assistant .message-content ol      { margin:.4rem 0 .7rem; padding-right:1.4rem; padding-left:0; }
+        .message.assistant .message-content li      { margin-bottom:.35rem; }
         .message.assistant .message-content strong  { color:var(--gold); font-weight:700; }
+        .message.assistant .message-content em      { color:var(--light-gold); }
         .message.assistant .message-content code    { background:rgba(0,0,0,.35); padding:.1rem .4rem; border-radius:4px; font-family:monospace; font-size:.9em; }
+        .message.assistant .message-content blockquote { border-right:3px solid var(--gold); padding-right:.8rem; color:rgba(255,255,255,.8); margin:.5rem 0; }
+        .message.assistant .message-content hr { border:0; border-top:1px solid rgba(255,255,255,.2); margin:.8rem 0; }
+        .message.assistant .message-content a { color:var(--gold); text-decoration:underline; }
 
-        /* ── EXACT TABLE STYLING FROM IMAGE ── */
+        /* ── TABLE — matches the image exactly ──────────────────────────
+           RTL inherited from parent bubble (correct Arabic column order)
+           Colors: #004488 body background, #0055a4 header background
+           Vertical column dividers, no alternating rows, hover highlight
+        ─────────────────────────────────────────────────────────────────── */
         .message.assistant .message-content table {
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0;
             width: 100%;
             margin: 1rem 0;
-            font-size: .95rem;
-            direction: rtl;            /* RTL so Arabic columns align correctly */
-            text-align: center;        /* Center all text perfectly like the image */
-            background-color: #005bb5; /* Base row color (Mansoura Blue) */
-            border: 1px solid rgba(255, 255, 255, 0.4);
-            min-width: 600px;
+            font-size: 0.92rem;
+            border-radius: 8px;
+            overflow: hidden;
+            background-color: #004488;
+            direction: rtl;
+            border: 2px solid #0055a4;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
         }
         .message.assistant .message-content th {
-            background-color: #003366; /* Deep navy header */
-            color: #FFD700;            /* Gold text */
-            padding: 0.8rem;
-            border: 1px solid rgba(255, 255, 255, 0.4);
+            background-color: #0055a4;
+            color: var(--white);
+            padding: 0.85rem 1rem;
+            text-align: center;
             font-weight: 700;
+            font-size: 0.95rem;
+            border-bottom: 2px solid #003366;
+            border-left: 1px solid rgba(255,255,255,0.18);
             white-space: nowrap;
+            letter-spacing: 0.3px;
+        }
+        .message.assistant .message-content th:last-child {
+            border-left: none;
         }
         .message.assistant .message-content td {
-            padding: 0.6rem 0.8rem;
-            border: 1px solid rgba(255, 255, 255, 0.4);
-            color: #ffffff;
+            padding: 0.75rem 1rem;
+            color: var(--white);
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            border-left: 1px solid rgba(255,255,255,0.15);
+            background-color: #004488;
         }
-        .message.assistant .message-content tr:nth-child(even) td {
-            background-color: #006edb; /* Lighter blue for alternating rows */
+        .message.assistant .message-content td:last-child {
+            border-left: none;
         }
-        .message.assistant .message-content tr:hover td {
-            background-color: #004b99; /* Smooth hover effect for interactivity */
+        .message.assistant .message-content tr:last-child td {
+            border-bottom: none;
+        }
+        .message.assistant .message-content tbody tr:hover td {
+            background-color: rgba(255,255,255,0.08);
+            transition: background .18s;
         }
 
         /* Thinking dots */
@@ -134,12 +151,12 @@
         .input-wrapper { flex:1; display:flex; flex-direction:column; }
         .input-label { font-size:.8rem; color:var(--primary-navy); font-weight:600; margin-bottom:.25rem; }
         .input-box { display:flex; gap:.5rem; align-items:flex-end; }
-        #messageInput { flex:1; padding:.75rem 1rem; border:2px solid var(--primary-navy); border-radius:var(--border-radius); font-size:.95rem; font-family:inherit; resize:none; max-height:100px; transition:border-color .3s; }
+        #messageInput { flex:1; padding:.75rem 1rem; border:2px solid var(--primary-navy); border-radius:var(--border-radius); font-size:.95rem; font-family:inherit; resize:none; max-height:100px; transition:border-color .3s; direction:rtl; }
         #messageInput:focus { outline:none; border-color:var(--gold); box-shadow:0 0 0 3px rgba(255,215,0,.1); }
         .action-controls { display:flex; gap:.5rem; align-items:center; padding-bottom:3px; }
         .icon-btn { background:transparent; border:none; font-size:1.5rem; cursor:pointer; padding:0 5px; transition:.3s; opacity:.7; }
         .icon-btn:hover { opacity:1; transform:scale(1.1); }
-        .send-btn, .stop-btn { color:var(--white); border:none; width:42px; height:42px; border-radius:50%; font-size:1.2rem; cursor:pointer; transition:all .3s; display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:var(--shadow); }
+        .send-btn,.stop-btn { color:var(--white); border:none; width:42px; height:42px; border-radius:50%; font-size:1.2rem; cursor:pointer; transition:all .3s; display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:var(--shadow); }
         .send-btn { background:linear-gradient(135deg,var(--primary-navy),var(--light-navy)); }
         .send-btn:hover { transform:scale(1.05); box-shadow:var(--shadow-lg); }
         .send-btn:active { transform:scale(.95); }
@@ -149,26 +166,17 @@
         .stop-btn:hover { background:#c82333; transform:scale(1.05); }
         .stop-btn::before { content:"🛑"; font-size:1.3rem; }
 
-        /* Planner */
         .planner-area { flex:1; display:flex; flex-direction:column; background:var(--gray-light); overflow-y:auto; padding:2rem 3rem; }
 
-        /* Upload */
-        #fileInput { display:none; }
-        .upload-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:1000; align-items:center; justify-content:center; }
-        .upload-overlay.active { display:flex; }
-        .upload-modal { background:var(--white); padding:2rem; border-radius:var(--border-radius); box-shadow:var(--shadow-lg); text-align:center; z-index:1001; }
-        .upload-cancel { background:#ddd; color:var(--gray-dark); border:none; padding:.75rem 1.5rem; border-radius:var(--border-radius); cursor:pointer; font-weight:600; margin-top:1rem; }
-
-        /* Scrollbars */
         ::-webkit-scrollbar { width:6px; }
         ::-webkit-scrollbar-track { background:transparent; }
         ::-webkit-scrollbar-thumb { background:#ccc; border-radius:10px; }
         ::-webkit-scrollbar-thumb:hover { background:var(--gold); }
 
-        /* Voice overlay */
+        /* Voice */
         .voice-overlay { position:fixed; inset:0; background:rgba(0,15,30,.95); z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; transition:opacity .3s; backdrop-filter:blur(8px); }
         .voice-overlay.hidden { opacity:0; pointer-events:none; }
-        .voice-status  { color:var(--white); font-size:1.5rem; margin-bottom:30px; font-weight:300; letter-spacing:1px; }
+        .voice-status { color:var(--white); font-size:1.5rem; margin-bottom:30px; font-weight:300; letter-spacing:1px; }
         #closeVoiceBtn { position:absolute; top:30px; right:30px; background:none; border:none; color:white; font-size:2rem; cursor:pointer; transition:.2s; }
         #closeVoiceBtn:hover { color:#ff4444; transform:scale(1.1); }
         .orb-container { display:flex; align-items:center; justify-content:center; height:300px; width:100%; }
@@ -178,8 +186,14 @@
         .voice-mode-badge.speaking  { background:rgba(0,120,255,.2);  color:#64b5f6; }
         .voice-hint { color:rgba(255,255,255,.35); font-size:.8rem; margin-top:10px; }
         .voice-orb { width:170px; height:170px; background:transparent; border:4px solid var(--gold); border-radius:50%; position:relative; transition:transform .1s ease-out; }
-        .voice-orb::after  { content:''; position:absolute; top:-12px; left:-12px; right:-12px; bottom:-12px; border:4px solid #ff8c00; border-radius:inherit; filter:blur(12px); opacity:.8; transition:all .1s; }
-        .voice-orb::before { content:''; position:absolute; top:-4px; left:-4px; right:-4px; bottom:-4px; border:2px solid #fff; border-radius:inherit; filter:blur(4px); opacity:.6; transition:all .1s; }
+        .voice-orb::after  { content:''; position:absolute; top:-12px; left:-12px; right:-12px; bottom:-12px; border:4px solid #ff8c00; border-radius:inherit; filter:blur(12px); opacity:.8; }
+        .voice-orb::before { content:''; position:absolute; top:-4px; left:-4px; right:-4px; bottom:-4px; border:2px solid #fff; border-radius:inherit; filter:blur(4px); opacity:.6; }
+
+        /* Drag-and-drop planner */
+        .course-item { cursor:grab; transition:all .2s; user-select:none; }
+        .course-item:active { cursor:grabbing; }
+        .course-item.dragging { opacity:.4; transform:rotate(4deg); }
+        .semester-dropzone { transition:box-shadow .2s,transform .2s; }
     </style>
 </head>
 <body>
@@ -212,7 +226,7 @@
                 <div id="historyContainer" class="empty-history">No queries yet.</div>
             </div>
         </div>
-        <div class="nav-item upload-btn" onclick="triggerFileUpload()"><span>📁</span> Upload Transcript</div>
+        <div class="nav-item upload-btn" style="display:none"></div>
     </nav>
 
     <div id="view-chat" class="view-container active">
@@ -221,16 +235,16 @@
                 <div class="message assistant">
                     <div class="message-avatar">A</div>
                     <div>
-                        <div class="message-content">👋 Welcome to ADVI! I'm your academic advisor. How can I assist you today?</div>
+                        <div class="message-content">👋 أهلاً! أنا ADVI، مرشدك الأكاديمي. اسألني عن المقررات، اللائحة، GPA، الوظائف، أو الكورسات!</div>
                         <div class="message-time">Just now</div>
                     </div>
                 </div>
             </div>
             <div class="input-area">
                 <div class="input-wrapper">
-                    <label class="input-label">Your Question</label>
+                    <label class="input-label">سؤالك</label>
                     <div class="input-box">
-                        <textarea id="messageInput" placeholder="Ask about courses, requirements, GPA..." rows="1" onkeydown="handleKeyPress(event)"></textarea>
+                        <textarea id="messageInput" placeholder="اسأل عن المقررات، اللائحة، GPA، الوظائف..." rows="1" onkeydown="handleKeyPress(event)"></textarea>
                         <div class="action-controls">
                             <button class="icon-btn" onclick="clearMemory()" title="Clear Memory">🗑️</button>
                             <button class="icon-btn" onclick="toggleVoice()" title="Voice Chat">🎙️</button>
@@ -253,31 +267,12 @@
                     <option value="8">8 Semesters (Overload)</option>
                 </select>
             </div>
-            <div style="background:var(--white);padding:1rem 1.5rem;border-radius:8px;border:1px solid var(--gold);margin-bottom:1.5rem;display:flex;gap:1rem;align-items:center;box-shadow:var(--shadow);">
-                <strong style="color:var(--primary-navy);">Move Selected Courses to:</strong>
-                <select id="moveDestination" style="padding:.5rem;border-radius:5px;border:1px solid #ccc;font-family:inherit;">
-                    <option value="">Select Semester...</option>
-                    <option value="1">Semester 1</option><option value="2">Semester 2</option>
-                    <option value="S2">Summer S2</option><option value="3">Semester 3</option>
-                    <option value="4">Semester 4</option><option value="S3">Summer S3</option>
-                    <option value="5">Semester 5</option><option value="6">Semester 6</option>
-                    <option value="S4">Summer S4</option><option value="7">Semester 7</option>
-                    <option value="8">Semester 8</option><option value="9">Semester 9</option>
-                    <option value="10">Semester 10</option>
-                </select>
-                <button onclick="executeMove()" style="padding:.6rem 1.5rem;background:var(--primary-navy);color:white;border:none;border-radius:5px;cursor:pointer;font-weight:bold;">Move ➡️</button>
+            <div style="background:rgba(255,215,0,.12);border:1px solid var(--gold);border-radius:8px;padding:.75rem 1.2rem;margin-bottom:1.2rem;font-size:.85rem;color:var(--primary-navy);font-weight:500;">
+                💡 اسحب أي مقرر وأسقطه في الفصل الدراسي المطلوب لتحريكه.
             </div>
             <div id="planValidation" style="margin-bottom:1.5rem;"></div>
             <div id="planGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1.5rem;"></div>
         </div>
-    </div>
-</div>
-
-<input type="file" id="fileInput" accept="image/*,.pdf" onchange="handleFileUpload(event)">
-<div class="upload-overlay" id="uploadOverlay">
-    <div class="upload-modal">
-        <h3>Uploading Transcript...</h3><p>Processing...</p>
-        <button class="upload-cancel" onclick="cancelUpload()">Cancel</button>
     </div>
 </div>
 
@@ -289,10 +284,12 @@
     <div class="voice-hint">قل "اسكت" لإيقاف الكلام</div>
 </div>
 
+<!-- ════════ SCRIPT 1: Chat ════════ -->
 <script>
 const API_URL = 'http://127.0.0.1:8000';
 const WS_URL  = 'ws://127.0.0.1:8000';
 
+// Don't restore old messages on reload — only sidebar history
 let chatHistory    = [];
 let currentRawPlan = {};
 let abortController = null;
@@ -300,448 +297,373 @@ let isStreaming      = false;
 
 function renderMarkdown(text) {
     if (!text) return '';
+
+    // Fix tables where rows got concatenated without newlines during streaming
+    let safeText = text
+        .replace(/\|\|/g, '|\n|')          // re-add newlines between glued rows
+        .replace(/:(?=\s*\|)/g, ':\n\n');  // ensure blank line before table starts
+
     marked.setOptions({ breaks:true, gfm:true, headerIds:false, mangle:false });
-    const raw = marked.parse(text);
-    return raw
-        .replace(/<script[\s\S]*?<\/script>/gi, '')
-        .replace(/<iframe[\s\S]*?>/gi, '')
-        .replace(/\son\w+="[^"]*"/gi, '');
+    return marked.parse(safeText)
+        .replace(/<script[\s\S]*?<\/script>/gi,'')
+        .replace(/<iframe[\s\S]*?>/gi,'')
+        .replace(/\son\w+="[^"]*"/gi,'');
 }
 function escapeHtml(t) { const d=document.createElement('div'); d.textContent=t; return d.innerHTML; }
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Load history for sidebar display only
+    // Sidebar only — don't render old messages in chat window
     const saved = localStorage.getItem('chatHistory');
     if (saved) { chatHistory = JSON.parse(saved); updateHistoryUI(); }
 
     const ta = document.getElementById('messageInput');
-    ta.addEventListener('input', () => {
-        ta.style.height = 'auto';
-        ta.style.height = Math.min(ta.scrollHeight, 100) + 'px';
-    });
+    ta.addEventListener('input', () => { ta.style.height='auto'; ta.style.height=Math.min(ta.scrollHeight,100)+'px'; });
 });
 
 function switchTab(id) {
-    document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active'));
-    document.querySelectorAll('.view-container').forEach(e => e.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
+    document.querySelectorAll('.view-container').forEach(e=>e.classList.remove('active'));
     document.getElementById(`tabBtn-${id}`).classList.add('active');
     document.getElementById(`view-${id}`).classList.add('active');
-    if (id === 'planner') fetchPlan();
+    if (id==='planner') fetchPlan();
 }
-function handleKeyPress(e) { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
+function handleKeyPress(e) { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();} }
 
 function addMessageToUI(sender, text, id=null) {
-    const chat = document.getElementById('chatMessages');
-    const div  = document.createElement('div');
-    div.className = `message ${sender}`;
-    const avatar  = sender==='assistant' ? 'A' : 'U';
-    const time    = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
-    const idAttr  = id ? `id="${id}"` : '';
-    const content = sender==='assistant' ? renderMarkdown(text) : escapeHtml(text);
-    div.innerHTML = `
-        <div class="message-avatar">${avatar}</div>
-        <div>
-            <div class="message-content" ${idAttr}>${content}</div>
-            <div class="message-time">${time}</div>
-        </div>`;
-    chat.appendChild(div);
-    chat.scrollTop = chat.scrollHeight;
-    return id ? document.getElementById(id) : null;
+    const chat=document.getElementById('chatMessages');
+    const div=document.createElement('div'); div.className=`message ${sender}`;
+    const avatar=sender==='assistant'?'A':'U';
+    const time=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    const idAttr=id?`id="${id}"`:'';
+    const content=sender==='assistant'?renderMarkdown(text):escapeHtml(text);
+    div.innerHTML=`<div class="message-avatar">${avatar}</div><div><div class="message-content" ${idAttr}>${content}</div><div class="message-time">${time}</div></div>`;
+    chat.appendChild(div); chat.scrollTop=chat.scrollHeight;
+    return id?document.getElementById(id):null;
 }
 
 async function sendMessage() {
-    const input = document.getElementById('messageInput');
-    const msg   = input.value.trim();
-    if (!msg || isStreaming) return;
-
-    const sendBtn = document.getElementById('sendBtn');
-    const stopBtn = document.getElementById('stopBtn');
-    isStreaming = true;
-    sendBtn.disabled = true; sendBtn.style.display='none'; stopBtn.style.display='flex';
-
-    addMessageToUI('user', msg);
-    input.value = ''; input.style.height = 'auto';
-
-    chatHistory.unshift({ query: msg, time: new Date().toLocaleTimeString() });
+    const input=document.getElementById('messageInput'),msg=input.value.trim();
+    if(!msg||isStreaming) return;
+    const sendBtn=document.getElementById('sendBtn'),stopBtn=document.getElementById('stopBtn');
+    isStreaming=true; sendBtn.disabled=true; sendBtn.style.display='none'; stopBtn.style.display='flex';
+    addMessageToUI('user',msg); input.value=''; input.style.height='auto';
+    chatHistory.unshift({query:msg,time:new Date().toLocaleTimeString()});
     updateHistoryUI(); saveChatHistory();
-
-    const msgId      = 'stream-' + Date.now();
-    const contentDiv = addMessageToUI('assistant', '', msgId);
-
-    if (contentDiv) contentDiv.innerHTML = `<div class="thinking-dots"><span></span><span></span><span></span></div>`;
-
-    abortController = new AbortController();
-    try {
-        const res = await fetch(`${API_URL}/api/v1/nlp/index/answer/1`, {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ text: msg, limit: 5 }),
-            signal:  abortController.signal
+    const msgId='stream-'+Date.now();
+    const contentDiv=addMessageToUI('assistant','',msgId);
+    if(contentDiv) contentDiv.innerHTML=`<div class="thinking-dots"><span></span><span></span><span></span></div>`;
+    abortController=new AbortController();
+    try{
+        const res=await fetch(`${API_URL}/api/v1/nlp/index/answer/1`,{
+            method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({text:msg,limit:5}),signal:abortController.signal
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-        const reader  = res.body.getReader();
-        const decoder = new TextDecoder('utf-8');
-        let fullAnswer = '', buffer = '';
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n'); buffer = lines.pop();
-            for (const line of lines) {
-                if (!line.startsWith('data: ')) continue;
-                const data = line.substring(6);
-                if (data === '[DONE]') break;
-                fullAnswer += data;
-                if (contentDiv) {
-                    contentDiv.innerHTML = renderMarkdown(fullAnswer);
-                    document.getElementById('chatMessages').scrollTop =
-                        document.getElementById('chatMessages').scrollHeight;
-                }
+        if(!res.ok) throw new Error(`HTTP ${res.status}`);
+        const reader=res.body.getReader(),decoder=new TextDecoder('utf-8');
+        let fullAnswer='',buffer='';
+        while(true){
+            const{done,value}=await reader.read(); if(done) break;
+            buffer+=decoder.decode(value,{stream:true});
+            const lines=buffer.split('\n'); buffer=lines.pop();
+            for(const line of lines){
+                if(!line.startsWith('data: ')) continue;
+                const data=line.substring(6); if(data==='[DONE]') break;
+                fullAnswer+=data;
+                if(contentDiv){contentDiv.innerHTML=renderMarkdown(fullAnswer);document.getElementById('chatMessages').scrollTop=document.getElementById('chatMessages').scrollHeight;}
             }
         }
-    } catch (err) {
-        if (err.name === 'AbortError') {
-            if (contentDiv) contentDiv.innerHTML += '<br><em>[🛑 Stopped]</em>';
-        } else {
-            if (contentDiv) contentDiv.innerHTML = '❌ Error: Server connection failed.';
-        }
-    } finally {
-        isStreaming = false; abortController = null;
-        sendBtn.disabled = false; sendBtn.style.display='flex'; stopBtn.style.display='none';
+    }catch(err){
+        if(err.name==='AbortError'){if(contentDiv) contentDiv.innerHTML+='<br><em>[🛑 Stopped]</em>';}
+        else{if(contentDiv) contentDiv.innerHTML='❌ Error: Server connection failed.';}
+    }finally{
+        isStreaming=false;abortController=null;
+        sendBtn.disabled=false;sendBtn.style.display='flex';stopBtn.style.display='none';
         input.focus();
     }
 }
-function stopGeneration() { if (abortController) abortController.abort(); }
+function stopGeneration(){if(abortController) abortController.abort();}
 
-async function clearMemory() {
-    chatHistory = []; saveChatHistory(); updateHistoryUI();
-    document.getElementById('chatMessages').innerHTML = `
-        <div class="message assistant">
-            <div class="message-avatar">A</div>
-            <div>
-                <div class="message-content">🧹 Memory cleared! Starting fresh.</div>
-                <div class="message-time">${new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</div>
-            </div>
-        </div>`;
+async function clearMemory(){
+    chatHistory=[];saveChatHistory();updateHistoryUI();
+    document.getElementById('chatMessages').innerHTML=`<div class="message assistant"><div class="message-avatar">A</div><div><div class="message-content">🧹 تم مسح الذاكرة! نبدأ من جديد.</div><div class="message-time">${new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</div></div></div>`;
 }
-
-function updateHistoryUI() {
-    const el = document.getElementById('historyContainer');
-    if (!chatHistory.length) { el.innerHTML = '<div class="empty-history">No queries yet.</div>'; return; }
-    el.innerHTML = chatHistory.map((item, i) =>
-        `<div class="history-item" onclick="loadHistoryItem(${i})">
-            <div class="history-item-title">${escapeHtml(item.query)}</div>
-            <div class="history-item-time">${item.time}</div>
-         </div>`).join('');
+function updateHistoryUI(){
+    const el=document.getElementById('historyContainer');
+    if(!chatHistory.length){el.innerHTML='<div class="empty-history">No queries yet.</div>';return;}
+    el.innerHTML=chatHistory.map((item,i)=>`<div class="history-item" onclick="loadHistoryItem(${i})"><div class="history-item-title">${escapeHtml(item.query)}</div><div class="history-item-time">${item.time}</div></div>`).join('');
 }
-function loadHistoryItem(i) { document.getElementById('messageInput').value = chatHistory[i].query; }
-function saveChatHistory() { localStorage.setItem('chatHistory', JSON.stringify(chatHistory.slice(0, 15))); }
+function loadHistoryItem(i){document.getElementById('messageInput').value=chatHistory[i].query;}
+function saveChatHistory(){localStorage.setItem('chatHistory',JSON.stringify(chatHistory.slice(0,15)));}
 
-/* ── Planner ── */
-async function fetchPlan() {
-    const type = document.getElementById('planSelector').value;
-    const grid = document.getElementById('planGrid');
-    const vbox = document.getElementById('planValidation');
-    grid.innerHTML = '<div style="text-align:center;grid-column:1/-1;padding:2rem;">Loading... ⏳</div>';
-    vbox.innerHTML = '';
-    try {
-        const res  = await fetch(`${API_URL}/api/v1/planner/plan/${type}`);
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        currentRawPlan = Object.fromEntries(
-            Object.entries(data.plan).map(([s, d]) => [s, d.courses.map(c => c.code)])
-        );
-        renderValidation(data.validation, vbox);
-        renderPlanGrid(data.plan, grid);
-    } catch { grid.innerHTML = '<div style="color:red;grid-column:1/-1;text-align:center;">❌ Error loading plan.</div>'; }
+async function fetchPlan(){
+    const type=document.getElementById('planSelector').value;
+    const grid=document.getElementById('planGrid'),vbox=document.getElementById('planValidation');
+    grid.innerHTML='<div style="text-align:center;grid-column:1/-1;padding:2rem;">Loading... ⏳</div>';vbox.innerHTML='';
+    try{
+        const res=await fetch(`${API_URL}/api/v1/planner/plan/${type}`);if(!res.ok) throw new Error();
+        const data=await res.json();
+        currentRawPlan=Object.fromEntries(Object.entries(data.plan).map(([s,d])=>[s,d.courses.map(c=>c.code)]));
+        renderValidation(data.validation,vbox);renderPlanGrid(data.plan,grid);
+    }catch{grid.innerHTML='<div style="color:red;grid-column:1/-1;text-align:center;">❌ Error loading plan.</div>';}
 }
-
-function renderValidation(v, el) {
-    if (v.is_valid && !v.gpa_warning) {
-        el.innerHTML = `<div style="background:#d4edda;color:#155724;padding:1rem;border-radius:8px;border-left:5px solid #28a745;">✅ Plan is valid.</div>`;
-    } else {
-        let h = `<div style="background:#f8d7da;color:#721c24;padding:1rem;border-radius:8px;border-left:5px solid #dc3545;">`;
-        if (v.gpa_warning) h += `⚠️ <strong>Warning:</strong> Some semesters exceed 18 credits.<br><br>`;
-        (v.errors || []).forEach(e => h += `🚫 ${e}<br>`);
-        el.innerHTML = h + '</div>';
+function renderValidation(v,el){
+    let content='';
+    if(v.is_valid&&!v.gpa_warning){
+        content+=`<div style="background:#d4edda;color:#155724;padding:1rem;border-radius:8px;border-left:5px solid #28a745;">✅ Plan is valid.</div>`;
     }
+    if(v.gpa_warning){
+        content+=`<div style="background:#fff3cd;color:#856404;padding:1rem;border-radius:8px;border-left:5px solid #ffc107;margin-top:10px;">⚠️ <strong>Warning:</strong> Some semesters exceed 18 credits.</div>`;
+    }
+    if(v.errors&&v.errors.length){
+        let h=`<div style="background:#f8d7da;color:#721c24;padding:1rem;border-radius:8px;border-left:5px solid #dc3545;margin-top:10px;">`;
+        v.errors.forEach(e=>h+=`🚫 ${e}<br>`);
+        content+=h+'</div>';
+    }
+    el.innerHTML=content;
 }
 
-function renderPlanGrid(plan, el) {
-    el.innerHTML = '';
-    ["1","2","3","4","S2","5","6","S3","7","8","S4","9","10"].forEach(slot => {
-        const sem = plan[slot]; if (!sem) return;
-        const isSummer = slot.startsWith('S');
-        const title    = isSummer ? `Summer ${slot.replace('S','')}` : `Semester ${slot}`;
-        let html = `<div style="background:${isSummer?'#FFF8DC':'#fff'};border-top:4px solid ${isSummer?'#FFD700':'#003366'};border-radius:8px;box-shadow:var(--shadow);padding:1rem;">
+function renderPlanGrid(plan,el){
+    el.innerHTML='';
+    ["1","2","3","4","S2","5","6","S3","7","8","S4","9","10"].forEach(slot=>{
+        const sem=plan[slot];if(!sem) return;
+        const isSummer=slot.startsWith('S'),title=isSummer?`Summer ${slot.replace('S','')}`:`Semester ${slot}`;
+        let html=`<div class="semester-dropzone" data-sem="${slot}" ondragover="allowDrop(event)" ondrop="handleDrop(event)" style="background:${isSummer?'#FFF8DC':'#fff'};border-top:4px solid ${isSummer?'#FFD700':'#003366'};border-radius:8px;box-shadow:var(--shadow);padding:1rem;transition:all .3s;">
             <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #ddd;padding-bottom:.5rem;margin-bottom:.8rem;">
                 <strong style="color:var(--primary-navy);font-size:1.1rem;">${title}</strong>
                 <span style="font-size:.75rem;background:var(--gray-light);padding:4px 8px;border-radius:12px;font-weight:bold;">${sem.total_credits} Hrs</span>
             </div><ul style="list-style:none;padding:0;font-size:.9rem;">`;
-        if (!sem.courses.length) {
-            html += `<li style="color:#999;text-align:center;font-style:italic;padding:1rem 0;">Empty</li>`;
-        } else {
-            sem.courses.forEach(c => {
-                html += `<li style="margin-bottom:.5rem;display:flex;align-items:flex-start;gap:.5rem;background:rgba(0,0,0,.02);padding:4px;border-radius:4px;">
-                    <input type="checkbox" class="course-checkbox" value="${c.code}" data-sem="${slot}" style="margin-top:4px;cursor:pointer;">
-                    <div style="flex:1;display:flex;justify-content:space-between;">
-                        <span>${c.code} — ${escapeHtml(c.name)}</span>
-                        <span style="color:#888;font-size:.8rem;">(${c.credits})</span>
-                    </div></li>`;
-            });
-        }
-        html += `</ul></div>`;
-        el.innerHTML += html;
+        if(!sem.courses.length){html+=`<li style="color:#999;text-align:center;font-style:italic;font-size:.8rem;padding:1rem 0;">Empty</li>`;}
+        else{sem.courses.forEach(c=>{html+=`<li draggable="true" class="course-item" data-code="${c.code}" data-sem="${slot}" ondragstart="dragStart(event)" ondragend="dragEnd(event)" style="margin-bottom:.5rem;display:flex;align-items:center;gap:.5rem;background:rgba(0,0,0,.03);padding:6px 4px;border-radius:4px;cursor:grab;">
+            <span style="color:#999;font-size:.8rem;">⠿</span>
+            <div style="flex:1;display:flex;justify-content:space-between;">
+                <span style="font-weight:500;">${c.code} <span style="font-weight:normal;color:#555;">- ${escapeHtml(c.name)}</span></span>
+                <span style="color:#888;font-size:.8rem;font-weight:bold;">(${c.credits})</span>
+            </div></li>`;});}
+        html+=`</ul></div>`;el.innerHTML+=html;
     });
 }
 
-async function executeMove() {
-    const dest = document.getElementById('moveDestination').value;
-    if (!dest) return alert('Select a destination.');
-    const boxes = document.querySelectorAll('.course-checkbox:checked');
-    if (!boxes.length) return alert('Select at least one course.');
-    const toMove = {};
-    boxes.forEach(b => { const s = b.getAttribute('data-sem'); (toMove[s]=toMove[s]||[]).push(b.value); });
-    const grid = document.getElementById('planGrid');
-    grid.innerHTML = '<div style="text-align:center;grid-column:1/-1;padding:2rem;">Moving... ⏳</div>';
-    try {
-        const res  = await fetch(`${API_URL}/api/v1/planner/move`, {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ current_plan:currentRawPlan, courses_to_move:toMove, to_semester:dest })
-        });
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        currentRawPlan = data.raw_plan;
-        renderValidation(data.validation, document.getElementById('planValidation'));
-        renderPlanGrid(data.plan, grid);
-        document.getElementById('moveDestination').value = '';
-    } catch { grid.innerHTML = '<div style="color:red;grid-column:1/-1;text-align:center;">❌ Move failed.</div>'; }
+function dragStart(e){
+    e.dataTransfer.effectAllowed='move';
+    e.dataTransfer.setData('text/plain',JSON.stringify({code:e.target.dataset.code,sem:e.target.dataset.sem}));
+    e.target.classList.add('dragging');
 }
-
-function triggerFileUpload() { document.getElementById('fileInput').click(); }
-function cancelUpload()      { document.getElementById('uploadOverlay').classList.remove('active'); }
-async function handleFileUpload(e) {
-    if (!e.target.files[0]) return;
-    document.getElementById('uploadOverlay').classList.add('active');
-    setTimeout(() => { document.getElementById('uploadOverlay').classList.remove('active'); e.target.value=''; alert('Demo: Upload simulated!'); }, 2000);
+function allowDrop(e){
+    e.preventDefault();
+    const dz=e.target.closest('.semester-dropzone');
+    if(dz) dz.style.boxShadow='0 0 20px #FFD700, inset 0 0 20px rgba(255,215,0,.1)';
+}
+function dragEnd(e){
+    e.target.classList.remove('dragging');
+    document.querySelectorAll('.semester-dropzone').forEach(d=>d.style.boxShadow='var(--shadow)');
+}
+async function handleDrop(e){
+    e.preventDefault();
+    document.querySelectorAll('.semester-dropzone').forEach(d=>d.style.boxShadow='var(--shadow)');
+    const dz=e.target.closest('.semester-dropzone');
+    if(!dz) return;
+    let dragged;
+    try{dragged=JSON.parse(e.dataTransfer.getData('text/plain'));}catch{return;}
+    const destSem=dz.dataset.sem;
+    if(dragged.sem===destSem) return;
+    const grid=document.getElementById('planGrid');
+    grid.innerHTML='<div style="text-align:center;grid-column:1/-1;padding:2rem;color:var(--primary-navy);">🧳 Moving course... ⏳</div>';
+    try{
+        const res=await fetch(`${API_URL}/api/v1/planner/move`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({current_plan:currentRawPlan,courses_to_move:{[dragged.sem]:[dragged.code]},to_semester:destSem})});
+        if(!res.ok) throw new Error();
+        const data=await res.json();currentRawPlan=data.raw_plan;
+        renderValidation(data.validation,document.getElementById('planValidation'));
+        renderPlanGrid(data.plan,grid);
+    }catch{grid.innerHTML='<div style="color:#dc3545;grid-column:1/-1;text-align:center;">❌ Move failed.</div>';setTimeout(()=>fetchPlan(),2000);}
 }
 </script>
 
+<!-- ════════ SCRIPT 2: Voice ════════ -->
 <script>
-let voiceWS      = null;
-let micStream    = null;
-let micProcessor = null;
-let micAudioCtx  = null;
-let micAnalyser  = null;
-let animationId  = null;
-let isVoiceOpen  = false;
-let voiceState   = 'idle';
+let voiceWS=null,micStream=null,micProcessor=null,micAudioCtx=null,micAnalyser=null;
+let animationId=null,isVoiceOpen=false,voiceState='idle';
+let playCtx=null,nextScheduledTime=0;
+const SCHEDULE_AHEAD=0.08;
+let curVol=0,curR1=50,curR2=50,curR3=50,curR4=50;
 
-// Single AudioContext for gapless playback
-let playCtx           = null;
-let nextScheduledTime = 0;
-const SCHEDULE_AHEAD  = 0.08;
+// ✅ FIX 3: interruptedUntil — drop all incoming audio chunks for 1.5s after interrupt
+// so Gemini's already-buffered audio doesn't re-trigger the speaking state
+let interruptedUntil = 0;
 
-let curVol=0, curR1=50, curR2=50, curR3=50, curR4=50;
+// ✅ FIX 2: track accumulated Gemini output text per turn for chat display
+let currentGeminiOutput = '';
 
-const voiceOverlay  = document.getElementById('voiceOverlay');
-const voiceStatusEl = document.getElementById('voiceStatus');
-const voiceOrb      = document.getElementById('voiceOrb');
-const voiceBadge    = document.getElementById('voiceModeBadge');
+const voiceOverlay=document.getElementById('voiceOverlay');
+const voiceStatusEl=document.getElementById('voiceStatus');
+const voiceOrb=document.getElementById('voiceOrb');
+const voiceBadge=document.getElementById('voiceModeBadge');
 
-function setVoiceState(s) {
-    voiceState = s;
-    const lbl = { idle:'جاهز', listening:'بستمعلك...', thinking:'بفكر...', speaking:'بتكلم...' };
-    const bdg = { idle:'', listening:'listening', thinking:'thinking', speaking:'speaking' };
-    voiceStatusEl.innerText = lbl[s] || s;
-    voiceBadge.className    = `voice-mode-badge ${bdg[s]||''}`;
-    voiceBadge.innerText    = lbl[s] || s;
+function setVoiceState(s){
+    voiceState=s;
+    const lbl={idle:'جاهز',listening:'بستمعلك...',thinking:'بفكر...',speaking:'بتكلم...'};
+    const bdg={idle:'',listening:'listening',thinking:'thinking',speaking:'speaking'};
+    voiceStatusEl.innerText=lbl[s]||s;
+    voiceBadge.className=`voice-mode-badge ${bdg[s]||''}`;
+    voiceBadge.innerText=lbl[s]||s;
+}
+function toggleVoice(){if(isVoiceOpen) closeVoiceUI(); else openVoiceUI();}
+
+async function openVoiceUI(){
+    try{micStream=await navigator.mediaDevices.getUserMedia({audio:{sampleRate:16000,channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true}});}
+    catch{alert('Microphone access denied.');return;}
+    isVoiceOpen=true;voiceOverlay.classList.remove('hidden');setVoiceState('idle');
+    micAudioCtx=new(window.AudioContext||window.webkitAudioContext)({sampleRate:16000});
+    micAnalyser=micAudioCtx.createAnalyser();micAnalyser.fftSize=256;
+    const src=micAudioCtx.createMediaStreamSource(micStream);src.connect(micAnalyser);
+    micProcessor=micAudioCtx.createScriptProcessor(4096,1,1);src.connect(micProcessor);micProcessor.connect(micAudioCtx.destination);micProcessor.onaudioprocess=onMicData;
+    playCtx=new(window.AudioContext||window.webkitAudioContext)({sampleRate:24000});nextScheduledTime=0;
+    startOrbAnimation();connectWebSocket();
 }
 
-function toggleVoice() { if (isVoiceOpen) closeVoiceUI(); else openVoiceUI(); }
+function connectWebSocket(){
+    voiceWS=new WebSocket(`${WS_URL}/api/v1/voice/live/1`);
+    voiceWS.binaryType='arraybuffer';
+    voiceWS.onopen=()=>{console.log('🟢 WS open');setVoiceState('listening');};
+    voiceWS.onmessage=(event)=>{
 
-async function openVoiceUI() {
-    try {
-        micStream = await navigator.mediaDevices.getUserMedia({
-            audio: { sampleRate:16000, channelCount:1, echoCancellation:true, noiseSuppression:true, autoGainControl:true }
-        });
-    } catch { alert('Microphone access denied.'); return; }
+        // ── JSON control messages ─────────────────────────────────────
+        if(typeof event.data==='string'){
+            try{
+                const msg=JSON.parse(event.data);
 
-    isVoiceOpen = true;
-    voiceOverlay.classList.remove('hidden');
-    setVoiceState('idle');
-
-    micAudioCtx = new (window.AudioContext||window.webkitAudioContext)({ sampleRate:16000 });
-    micAnalyser = micAudioCtx.createAnalyser(); micAnalyser.fftSize = 256;
-    const src = micAudioCtx.createMediaStreamSource(micStream);
-    src.connect(micAnalyser);
-    micProcessor = micAudioCtx.createScriptProcessor(4096, 1, 1);
-    src.connect(micProcessor);
-    micProcessor.connect(micAudioCtx.destination);
-    micProcessor.onaudioprocess = onMicData;
-
-    playCtx           = new (window.AudioContext||window.webkitAudioContext)({ sampleRate:24000 });
-    nextScheduledTime = 0;
-
-    startOrbAnimation();
-    connectWebSocket();
-}
-
-function connectWebSocket() {
-    voiceWS = new WebSocket(`${WS_URL}/api/v1/voice/live/1`);
-    voiceWS.binaryType = 'arraybuffer';
-
-    voiceWS.onopen = () => { console.log('🟢 WS open'); setVoiceState('listening'); };
-
-    voiceWS.onmessage = (event) => {
-        if (typeof event.data === 'string') {
-            try {
-                const msg = JSON.parse(event.data);
-
-                if (msg.type === 'state') {
+                if(msg.type==='state'){
                     setVoiceState(msg.value);
 
-                } else if (msg.type === 'qa_pair') {
-                    // User question + RAG answer arrive together
-                    addMessageToUI('user',      '🎙️ ' + msg.user_text);
-                    addMessageToUI('assistant', msg.answer_text);
+                } else if(msg.type==='qa_pair'){
+                    // RAG tool call — user question + answer always arrive together
+                    addMessageToUI('user','🎙️ '+msg.user_text);
+                    addMessageToUI('assistant',msg.answer_text);
+                    // Reset output accumulator for this turn
+                    currentGeminiOutput='';
 
-                } else if (msg.type === 'interrupt') {
+                } else if(msg.type==='gemini_text'){
+                    // ✅ FIX 2: Gemini's spoken text (output transcription)
+                    // Accumulate across partial chunks, display when turn ends
+                    currentGeminiOutput += msg.text;
+
+                } else if(msg.type==='user_transcript'){
+                    // ✅ FIX 2: User's spoken words confirmed by Gemini
+                    addMessageToUI('user','🎙️ '+msg.text);
+
+                } else if(msg.type==='interrupt'){
+                    // ✅ FIX 3: True interrupt — block all incoming audio for 1.5s
+                    // so already-buffered Gemini audio doesn't restart speaking state
+                    interruptedUntil = Date.now() + 1500;
                     stopScheduledAudio();
                     setVoiceState('listening');
+                    // If Gemini had started saying something, show partial in chat
+                    if(currentGeminiOutput.trim()){
+                        addMessageToUI('assistant', currentGeminiOutput.trim() + ' [توقف]');
+                        currentGeminiOutput='';
+                    }
 
-                } else if (msg.type === 'turn_complete') {
-                    // Gemini finished speaking — wait for audio queue to drain naturally
+                } else if(msg.type==='turn_complete'){
+                    // ✅ FIX 2: Gemini finished its turn — show full spoken text in chat
+                    // (only if it wasn't a tool call turn, which uses qa_pair instead)
+                    if(currentGeminiOutput.trim()){
+                        addMessageToUI('assistant', currentGeminiOutput.trim());
+                        currentGeminiOutput='';
+                    }
+                    // Wait for remaining scheduled audio to finish, then listen
                     waitForAudioThenListen();
+
+                // Legacy handlers kept for safety
+                } else if(msg.type==='transcript'&&msg.role==='user'){
+                    addMessageToUI('user','🎙️ '+msg.text);
+                } else if(msg.type==='answer'){
+                    addMessageToUI('assistant',msg.text);
                 }
 
-                // Legacy handlers (kept for safety)
-                else if (msg.type === 'transcript' && msg.role === 'user') {
-                    addMessageToUI('user', '🎙️ ' + msg.text);
-                } else if (msg.type === 'answer') {
-                    addMessageToUI('assistant', msg.text);
-                }
-
-            } catch {}
+            }catch(e){console.warn('Voice msg parse error:',e);}
             return;
         }
 
-        // Binary PCM from Gemini (24kHz int16 mono)
-        if (event.data instanceof ArrayBuffer && event.data.byteLength > 0) {
+        // ── Binary: PCM audio from Gemini (24kHz int16 mono) ─────────
+        if(event.data instanceof ArrayBuffer && event.data.byteLength>0){
+            // ✅ FIX 3: Drop audio chunks during interrupt window
+            if(Date.now() < interruptedUntil) return;
             setVoiceState('speaking');
             schedulePcmChunk(event.data);
         }
     };
-
-    voiceWS.onclose = (e) => { 
-        console.log('🔴 WS closed', e.code); 
-        // Auto-reconnect if the UI overlay is still open
-        if (isVoiceOpen) {
-            setVoiceState('idle');
-            setTimeout(() => {
-                if (isVoiceOpen) connectWebSocket();
-            }, 1500);
-        }
-    };
-    voiceWS.onerror = (e) => { console.error('WS error', e); };
+    voiceWS.onclose=(e)=>{console.log('🔴 WS closed',e.code);if(isVoiceOpen)setVoiceState('idle');};
+    voiceWS.onerror=(e)=>console.error('WS error',e);
 }
 
-function onMicData(e) {
-    if (!voiceWS || voiceWS.readyState !== WebSocket.OPEN) return;
-    
-    // Only pause the mic when the backend is searching the DB ("thinking").
-    if (voiceState === 'thinking') return;
-
-    const f32 = e.inputBuffer.getChannelData(0);
-    const i16 = new Int16Array(f32.length);
-    for (let i=0; i<f32.length; i++) i16[i] = Math.max(-32768, Math.min(32767, Math.round(f32[i]*32767)));
+function onMicData(e){
+    if(!voiceWS||voiceWS.readyState!==WebSocket.OPEN) return;
+    if(voiceState==='speaking'||voiceState==='thinking') return;
+    const f32=e.inputBuffer.getChannelData(0);
+    const i16=new Int16Array(f32.length);
+    for(let i=0;i<f32.length;i++) i16[i]=Math.max(-32768,Math.min(32767,Math.round(f32[i]*32767)));
     voiceWS.send(i16.buffer);
 }
 
-// Gapless playback scheduler
-function schedulePcmChunk(rawBuffer) {
-    if (!playCtx) return;
-    const i16  = new Int16Array(rawBuffer);
-    const f32  = new Float32Array(i16.length);
-    for (let i=0; i<i16.length; i++) f32[i] = i16[i] / 32768;
-
-    const buf = playCtx.createBuffer(1, f32.length, 24000);
-    buf.copyToChannel(f32, 0);
-
-    const src = playCtx.createBufferSource();
-    src.buffer = buf;
-    src.connect(playCtx.destination);
-
-    const t = Math.max(playCtx.currentTime + SCHEDULE_AHEAD, nextScheduledTime);
-    src.start(t);
-    nextScheduledTime = t + buf.duration;
+function schedulePcmChunk(rawBuffer){
+    if(!playCtx) return;
+    const i16=new Int16Array(rawBuffer);
+    const f32=new Float32Array(i16.length);
+    for(let i=0;i<i16.length;i++) f32[i]=i16[i]/32768;
+    const buf=playCtx.createBuffer(1,f32.length,24000);buf.copyToChannel(f32,0);
+    const src=playCtx.createBufferSource();src.buffer=buf;src.connect(playCtx.destination);
+    const t=Math.max(playCtx.currentTime+SCHEDULE_AHEAD,nextScheduledTime);
+    src.start(t);nextScheduledTime=t+buf.duration;
 }
 
-// Wait until scheduled audio finishes, then switch to listening
-function waitForAudioThenListen() {
-    if (!playCtx) { setVoiceState('listening'); return; }
-    const remaining = nextScheduledTime - playCtx.currentTime;
-    if (remaining <= 0) {
-        setVoiceState('listening');
-    } else {
-        setTimeout(() => setVoiceState('listening'), (remaining + 0.1) * 1000);
-    }
+function waitForAudioThenListen(){
+    if(!playCtx){setVoiceState('listening');return;}
+    const rem=nextScheduledTime-playCtx.currentTime;
+    if(rem<=0) setVoiceState('listening');
+    else setTimeout(()=>setVoiceState('listening'),(rem+0.1)*1000);
 }
 
-function stopScheduledAudio() {
-    if (!playCtx) return;
-    try { playCtx.close(); } catch {}
-    playCtx           = new (window.AudioContext||window.webkitAudioContext)({ sampleRate:24000 });
-    nextScheduledTime = 0;
+function stopScheduledAudio(){
+    if(!playCtx) return;
+    try{playCtx.close();}catch{}
+    playCtx=new(window.AudioContext||window.webkitAudioContext)({sampleRate:24000});
+    nextScheduledTime=0;
 }
 
-function closeVoiceUI() {
-    isVoiceOpen = false;
-    voiceOverlay.classList.add('hidden');
-    setVoiceState('idle');
+function closeVoiceUI(){
+    isVoiceOpen=false;voiceOverlay.classList.add('hidden');setVoiceState('idle');
     stopScheduledAudio();
-    if (voiceWS)      { voiceWS.close(); voiceWS = null; }
-    if (micProcessor) { micProcessor.disconnect(); micProcessor = null; }
-    if (micStream)    { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
-    if (micAudioCtx)  { micAudioCtx.close(); micAudioCtx = null; }
-    if (animationId)  { cancelAnimationFrame(animationId); animationId = null; }
-    try { if (playCtx) { playCtx.close(); playCtx = null; } } catch {}
+    if(voiceWS){voiceWS.close();voiceWS=null;}
+    if(micProcessor){micProcessor.disconnect();micProcessor=null;}
+    if(micStream){micStream.getTracks().forEach(t=>t.stop());micStream=null;}
+    if(micAudioCtx){micAudioCtx.close();micAudioCtx=null;}
+    if(animationId){cancelAnimationFrame(animationId);animationId=null;}
+    try{if(playCtx){playCtx.close();playCtx=null;}}catch{}
 }
 
-function startOrbAnimation() {
-    function frame() {
-        animationId = requestAnimationFrame(frame);
-        if (!micAnalyser) return;
-        const data = new Uint8Array(micAnalyser.frequencyBinCount);
+function startOrbAnimation(){
+    function frame(){
+        animationId=requestAnimationFrame(frame);
+        if(!micAnalyser) return;
+        const data=new Uint8Array(micAnalyser.frequencyBinCount);
         micAnalyser.getByteFrequencyData(data);
-        const sum = data.reduce((a,b) => a+b, 0);
-        curVol += (sum/data.length - curVol) * 0.2;
-
-        if (voiceState === 'thinking') {
-            voiceOrb.style.borderRadius = '50%';
-            voiceOrb.style.transform    = `rotate(${Date.now()/15%360}deg) scale(0.9)`;
-            voiceOrb.style.boxShadow    = '0 0 40px var(--primary-navy), inset 0 0 20px var(--gold)';
-            voiceOrb.style.borderColor  = 'var(--primary-navy)';
-        } else {
-            const tR1=50-(data[5]||0)/255*15, tR2=50+(data[15]||0)/255*15;
-            const tR3=50-(data[25]||0)/255*15, tR4=50+(data[35]||0)/255*15;
-            curR1+=(tR1-curR1)*0.15; curR2+=(tR2-curR2)*0.15;
-            curR3+=(tR3-curR3)*0.15; curR4+=(tR4-curR4)*0.15;
-            const br    = `${curR1}% ${100-curR1}% ${curR2}% ${100-curR2}% / ${100-curR3}% ${curR3}% ${100-curR4}% ${curR4}%`;
-            const scale = Math.min(1.5, 1 + curVol/80);
-            const glow  = 20 + curVol*1.5;
-            const sp    = voiceState === 'speaking';
-            voiceOrb.style.borderRadius = br;
-            voiceOrb.style.transform    = `scale(${scale})`;
-            voiceOrb.style.borderColor  = sp ? '#64b5f6' : 'var(--gold)';
-            voiceOrb.style.boxShadow    = sp
-                ? `0 0 ${glow}px rgba(100,181,246,.8), inset 0 0 ${glow/2}px rgba(0,120,255,.6)`
-                : `0 0 ${glow}px rgba(255,215,0,.8), inset 0 0 ${glow/2}px rgba(255,140,0,.6)`;
+        curVol+=(data.reduce((a,b)=>a+b,0)/data.length-curVol)*0.2;
+        if(voiceState==='thinking'){
+            voiceOrb.style.borderRadius='50%';
+            voiceOrb.style.transform=`rotate(${Date.now()/15%360}deg) scale(0.9)`;
+            voiceOrb.style.boxShadow='0 0 40px var(--primary-navy),inset 0 0 20px var(--gold)';
+            voiceOrb.style.borderColor='var(--primary-navy)';
+        }else{
+            const tR1=50-(data[5]||0)/255*15,tR2=50+(data[15]||0)/255*15;
+            const tR3=50-(data[25]||0)/255*15,tR4=50+(data[35]||0)/255*15;
+            curR1+=(tR1-curR1)*0.15;curR2+=(tR2-curR2)*0.15;curR3+=(tR3-curR3)*0.15;curR4+=(tR4-curR4)*0.15;
+            const br=`${curR1}% ${100-curR1}% ${curR2}% ${100-curR2}% / ${100-curR3}% ${curR3}% ${100-curR4}% ${curR4}%`;
+            const scale=Math.min(1.5,1+curVol/80),glow=20+curVol*1.5,sp=voiceState==='speaking';
+            voiceOrb.style.borderRadius=br;voiceOrb.style.transform=`scale(${scale})`;
+            voiceOrb.style.borderColor=sp?'#64b5f6':'var(--gold)';
+            voiceOrb.style.boxShadow=sp?`0 0 ${glow}px rgba(100,181,246,.8),inset 0 0 ${glow/2}px rgba(0,120,255,.6)`:`0 0 ${glow}px rgba(255,215,0,.8),inset 0 0 ${glow/2}px rgba(255,140,0,.6)`;
         }
     }
-    animationId = requestAnimationFrame(frame);
+    animationId=requestAnimationFrame(frame);
 }
 </script>
 </body>
