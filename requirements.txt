@@ -1,0 +1,38 @@
+# Web Framework & Server
+fastapi
+uvicorn[standard]
+python-multipart
+websockets
+aiohttp
+aiofiles
+pydantic-settings
+
+# Database & Vector Stores
+motor
+qdrant-client
+faiss-cpu
+rank-bm25
+
+# LLMs & AI Frameworks
+openai
+google-genai
+langchain
+langchain-community
+langchain-text-splitters
+langchain-openai
+
+# Document Processing & Scraping
+markitdown
+pymupdf
+tiktoken
+feedparser
+duckduckgo-search
+scrapling
+
+# Evaluation & Utils
+ragas
+datasets
+pandas
+requests
+python-dotenv
+numpy

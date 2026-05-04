@@ -1,0 +1,21 @@
+global:
+  scrape_interval: 15s      # How often to scrape targets
+  evaluation_interval: 15s  # How often to evaluate rules
+
+scrape_configs:
+  # 1. Scrape Prometheus itself
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # 2. Scrape Qdrant Vector DB
+  - job_name: "qdrant"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["qdrant:6333"]
+
+  # 3. Scrape the FastAPI Application container
+  - job_name: "fastapi_advi"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["api:8000"]
