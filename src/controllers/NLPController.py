@@ -142,7 +142,11 @@ class NLPController:
     def _enrich_query_locally(self, query: str) -> str:
         enriched_query = query
         
-        if re.search(r'(تقدير|درجات|gpa|حروف|نتيجه|نتيجة|تراكمي)', query, re.IGNORECASE):
+        WORKLOAD_KEYWORDS = r'(ساعات|تسجيل|حمل دراسي|عبء|يسجل)'
+        GRADE_TABLE_KEYWORDS = r'(تقدير|درجات|حروف|نتيجه|نتيجة)'
+
+        if re.search(GRADE_TABLE_KEYWORDS, query, re.IGNORECASE) and \
+        not re.search(WORKLOAD_KEYWORDS, query, re.IGNORECASE):
             enriched_query += " النقاط النسبة المئوية التقدير الحرفي A B C المعدل التراكمي الدلالات الرقمية"
 
         if re.search(r'(سنة أولى|سنة اولي|سنه اولي|مستوى 100|المستوى الأول|فرقة اعدادي)', query, re.IGNORECASE):
@@ -166,7 +170,39 @@ class NLPController:
         if not chat_history:
             return {"intent": "NEW_TOPIC", "refined_query": query}
 
-        # Cut history to the last 2 turns ONLY
+        # ✅ FIX: Rule-based pre-check BEFORE calling the LLM
+        # These are the ONLY signals that indicate a follow-up question
+        FOLLOWUP_PRONOUNS = [
+            'له', 'لها', 'عليه', 'عنها', 'عنه', 'منه', 'منها',
+            'فيه', 'فيها', 'ساعاته', 'ساعاتها', 'متطلبه', 'متطلباته',
+            'درجاته', 'درجاتها', 'اسمها', 'اسمه', 'كودها', 'كوده',
+            'هذا', 'هذه', 'ذلك', 'تلك', 'نفسه', 'نفسها'
+        ]
+        FOLLOWUP_STARTERS = [
+            'وكم', 'وما', 'وهل', 'وأين', 'ومتى', 'وماذا', 'وكيف',
+            'وما هو', 'وما هي', 'وهل يمكن', 'وماهو', 'وماهي'
+        ]
+
+        query_stripped = query.strip()
+
+        has_pronoun = any(f' {p} ' in f' {query_stripped} ' or
+                        query_stripped.endswith(f' {p}') or
+                        query_stripped.startswith(f'{p} ')
+                        for p in FOLLOWUP_PRONOUNS)
+
+        has_starter = any(query_stripped.startswith(s) for s in FOLLOWUP_STARTERS)
+
+        has_attached_pronoun = bool(re.search(
+        r'[\u0600-\u06FF]{3,}(ها|هم|هن|هما|ه)(?:\s|$)',
+        query_stripped
+    ))
+
+        if not has_pronoun and not has_starter and not has_attached_pronoun:
+            print(f"[DEBUG] 🚀 Rule-based NEW_TOPIC (no pronouns/connectors found)")
+            return {"intent": "NEW_TOPIC", "refined_query": query}
+
+        # Only reach here if there's a real follow-up signal
+        # Then call the LLM to resolve the pronoun
         recent = chat_history[-2:] if len(chat_history) >= 2 else chat_history
         history_text = ""
         for turn in recent:
@@ -178,14 +214,13 @@ class NLPController:
 
         prompt = f"""Complete this JSON. Output ONLY the JSON object, no other text.
 
-    {{"intent": "RELATED or NEW_TOPIC", "refined_query": "the resolved Arabic question"}}
+    {{"intent": "RELATED", "refined_query": "the resolved Arabic question with pronoun replaced"}}
 
     Rules:
-    1. CRITICAL: The `refined_query` MUST strictly reflect the user's LATEST "Current question".
-    2. CRITICAL: ONLY use the "Conversation" to resolve missing pronouns. NEVER change the topic of the current question to match an older question. 
-    3. If the current question is a completely new topic (e.g. "جدول الgpa", "وظائف"), output it exactly as is and mark it NEW_TOPIC.
-    4. RELATED if query has pronouns (له، لها، عليه، عنه، منه، فيه، ساعاته، متطلبه، درجاته، اسمها، كودها) or starts with (وكم، وما، وهل، وأين، ومتى).
-    5. NEW_TOPIC if it's a completely different subject.
+    1. The user's question contains a pronoun or connector referring to the previous conversation.
+    2. Replace the pronoun with the actual subject from the conversation history.
+    3. The refined_query must be a complete, standalone Arabic question.
+    4. NEVER change the topic.
 
     Conversation:
     {history_text.strip()}
@@ -201,48 +236,28 @@ class NLPController:
                 return {"intent": "NEW_TOPIC", "refined_query": query}
 
             clean = response.strip().replace("```json", "").replace("```", "").strip()
-
             start, end = clean.find('{'), clean.rfind('}')
+
             if start != -1 and end != -1:
                 try:
-                    result = json.loads(clean[start:end+1])
-                    intent = "RELATED" if "RELATED" in str(result.get("intent","")).upper() else "NEW_TOPIC"
-                    
-                    # 💡 THE FIX: Force the original query if the topic is new
-                    if intent == "NEW_TOPIC":
-                        refined_query = query
-                    else:
-                        refined_query = result.get("refined_query", query).strip() or query
+                    result        = json.loads(clean[start:end+1])
+                    refined_query = result.get("refined_query", query).strip() or query
 
                     if len(refined_query) > 120 or '"' in refined_query or 'الضمير' in refined_query:
-                        print(f"[WARN] refined_query looks like prose, reverting to original: {refined_query[:60]}")
+                        print(f"[WARN] refined_query looks like prose, reverting.")
                         refined_query = query
 
-                    print(f"[DEBUG] 🪄 Result: intent={intent}, refined='{refined_query}'")
-                    return {"intent": intent, "refined_query": refined_query}
+                    print(f"[DEBUG] 🪄 Result: intent=RELATED, refined='{refined_query}'")
+                    return {"intent": "RELATED", "refined_query": refined_query}
                 except json.JSONDecodeError:
                     pass
 
-            print(f"[WARN] rewrite_query got prose: {clean[:80]}")
-            intent = "RELATED" if re.search(r'\bRELATED\b', clean, re.IGNORECASE) else "NEW_TOPIC"
-
-            # 💡 THE FIX (Fallback Mode): Force the original query if the topic is new
-            if intent == "NEW_TOPIC":
-                refined_query = query
-            else:
-                quoted = re.findall(r'"([^"]{5,80})"', clean)
-                arabic_questions = [q for q in quoted if re.search(r'[\u0600-\u06FF]', q)
-                                and not any(w in q for w in ['الضمير', 'يعود', 'السياق', 'السؤال الحالي'])]
-
-                refined_query = arabic_questions[0].strip() if arabic_questions else query
-
-            print(f"[DEBUG] 🪄 Prose fallback: intent={intent}, refined='{refined_query}'")
-            return {"intent": intent, "refined_query": refined_query}
+            return {"intent": "RELATED", "refined_query": query}
 
         except Exception as e:
             print(f"[ERROR] rewrite_query failed: {e}")
             return {"intent": "NEW_TOPIC", "refined_query": query}
-    
+        
     async def search_vector_db_collection(self, project: Project, text: str,
                                            limit: int = 10, chat_history: list = []):
         query_embedding = self.embedding_client.embed_text(

@@ -16,14 +16,10 @@ class VectorDBAgent(BaseAgent):
         super().__init__(vectordb_client, generation_client, mongo_client,
                          template_parser, embedding_client)
         self.reranker_client = reranker_client
-        
-        
-        self.cache_threshold = 0.98
-        
-        
-        self.is_vector_agent = True  
 
-        self._qdrant         = getattr(vectordb_client, 'client', vectordb_client)
+        self.cache_threshold = 0.98
+        self.is_vector_agent = True
+        self._qdrant = getattr(vectordb_client, 'client', vectordb_client)
 
         from controllers.NLPController import NLPController
         self.nlp_controller = NLPController(
@@ -61,7 +57,6 @@ class VectorDBAgent(BaseAgent):
     def clean_output_text(self, text: str) -> str:
         if not text:
             return ""
-        # Frontend (marked.js) handles markdown — only strip technical leaks
         text = re.sub(r'(العنوان:|Title:|المحتوى:|تفاصيل السطر:)', '', text)
         text = re.sub(r' +', ' ', text)
         return text
@@ -140,15 +135,20 @@ class VectorDBAgent(BaseAgent):
             print(f"[DEBUG] Cache save failed: {e}")
 
     # ── Critic evaluator ──────────────────────────────────────────────────
-    async def evaluate_answer(self, query: str, context: str,
-                               draft_answer: str) -> bool:
+    async def evaluate_answer(self, query: str, context: str, draft_answer: str) -> bool:
         prompt = f"""You are a strict RAG evaluator.
-Task: Determine if the 'Draft Answer' is grounded in the 'Context'.
+Task: Determine if the 'Draft Answer' correctly answers the 'Query' based on the 'Context'.
+
 Rules:
-- Answer is correct and supported by context → "PASS"
+- Answer is correct and grounded in context → "PASS"
 - Answer says information is not found AND context truly doesn't contain it → "PASS"
 - Answer contains hallucinated facts not present in context → "FAIL"
 - Answer says "not found" when information IS clearly in context → "FAIL"
+- CRITICAL: If the query asks about a SPECIFIC value or condition 
+  (e.g. GPA=3.00, absence=20%, semester=2), the answer MUST address 
+  THAT exact value. Answering about a different value → "FAIL"
+- CRITICAL: If the query asks about topic X but the answer talks about 
+  topic Y (even if Y is in the context) → "FAIL"
 - NO EXPLANATIONS. ONLY ONE WORD: PASS or FAIL.
 
 Query: {query}
@@ -156,18 +156,16 @@ Context: {context}
 Draft Answer: {draft_answer}
 Decision:"""
         try:
+            # FIX: was max_output_tokens=2 which truncated "PASS"/"FAIL"
             result   = self.generation_client.generate_response(
-                prompt=prompt,
-                chat_history=[],
-                temperature=0.0,
-                max_output_tokens=2
+                prompt=prompt, chat_history=[], temperature=0.0, max_output_tokens=10
             )
             decision = result.strip().upper()
             print(f"[DEBUG] Critic: {decision}")
             return "PASS" in decision
         except Exception as e:
             print(f"[DEBUG] Critic error: {e}")
-            return True  # fail open on technical errors
+            return True
 
     # ── Main stream ───────────────────────────────────────────────────────
     async def process_stream(self, project: Project, query: str,
@@ -177,6 +175,13 @@ Decision:"""
 
         if chat_history is None:
             chat_history = []
+
+        # ── 0. Sanitize query ─────────────────────────────────────────────
+        JUNK_CHARS = '"\'"\u201c\u201d\u2018\u2019`'
+        query = query.strip().strip(JUNK_CHARS).strip()
+        if not query:
+            yield "عذراً، لم أفهم السؤال. حاول مرة أخرى."
+            return
 
         optimized_query = query
 
@@ -203,8 +208,8 @@ Decision:"""
             print("[DEBUG] Financial intent detected.")
             hours_match = re.search(r'(\d+)\s*(ساعة|ساعات|ساعه)', optimized_query)
             if hours_match:
-                hours  = int(hours_match.group(1))
-                total  = 2089 + (1330 * hours)
+                hours = int(hours_match.group(1))
+                total = 2089 + (1330 * hours)
                 answer = (
                     f"💰 **حساب المصروفات الدراسية:**\n\n"
                     f"لتسجيل **{hours} ساعة** معتمدة، الحسبة كالتالي:\n"
@@ -259,9 +264,11 @@ Decision:"""
 مهمتك هي تحويل اللوائح الجافة إلى نصائح واضحة، صديقة للمستخدم، ودقيقة بنسبة 100%.
 
 ⚠️ القواعد الذهبية:
-1. اعتمد فقط على المقتبسات المتاحة. إذا لم تجد المعلومة قل: "هذه المعلومة غير مذكورة في اللائحة الحالية".
-2. عندما تجد سطراً بصيغة (X - Y - Z) فاعلم أنه سطر من جدول مفرود.
-3. "دواير" = "دوائر"، "Level 100" = "المستوى 100". لا تكن حرفياً.
+1. أجب فقط على السؤال المطروح — لا تتطوع بمعلومات إضافية لم يُسأل عنها.
+2. اعتمد فقط على المقتبسات المتاحة. إذا لم تجد المعلومة قل: "هذه المعلومة غير مذكورة في اللائحة الحالية".
+3. عندما تجد سطراً بصيغة (X - Y - Z) فاعلم أنه سطر من جدول مفرود.
+4. "دواير" = "دوائر"، "Level 100" = "المستوى 100". لا تكن حرفياً.
+5. إذا كان السؤال يطلب رقماً أو شرطاً محدداً، اذكره في الجملة الأولى مباشرة ثم اختصر.
 
 🔑 قاعدة الجملة الأولى:
 ابدأ ردك دائماً بذكر اسم الموضوع أو المقرر صراحةً في الجملة الأولى.
@@ -292,6 +299,12 @@ Decision:"""
         full_prompt = (
             f"📚 السياق المستخرج:\n{context_text}\n\n"
             f"🎯 السؤال الحالي:\n{query}\n\n"
+            f"⚠️ تعليمات صارمة:\n"
+            f"- أجب فقط على السؤال المطروح بدقة، لا تضف معلومات إضافية غير مطلوبة.\n"
+            f"- إذا كان السؤال عن رقم أو شرط محدد، ابدأ بذكره مباشرة في أول جملة.\n"
+            f"- لا تذكر موضوعات أخرى من السياق غير ذات صلة بالسؤال.\n\n"
+            f"- إذا كان السؤال يذكر قيمة محددة (مثل GPA معين أو نسبة معينة)، "
+            f"أجب فقط عن تلك القيمة المذكورة في السؤال وليس عن قيم أخرى في السياق.\n\n"
             f"✍️ الإجابة المباشرة:"
         )
 
@@ -302,7 +315,7 @@ Decision:"""
             max_output_tokens=2048
         )
 
-        # ── 7. Stream & collect ───────────────────────────────────────────
+        # ── 7. Collect full answer BEFORE yielding ────────────────────────
         in_thinking_block     = False
         full_answer_for_cache = ""
         buffer                = ""
@@ -319,61 +332,152 @@ Decision:"""
                     clean             = self.clean_output_text(after)
                     if clean:
                         full_answer_for_cache += clean
-                        yield clean
                 else:
                     buffer += chunk.replace("</thinking>", "")
             else:
                 clean_chunk = self.clean_output_text(chunk)
                 if clean_chunk:
                     full_answer_for_cache += clean_chunk
-                    yield clean_chunk
 
-        # Flush buffer if </thinking> was never emitted
+        # Flush thinking buffer if </thinking> was never closed
         if buffer.strip():
             clean = self.clean_output_text(buffer)
             if clean:
                 full_answer_for_cache += clean
-                yield clean
 
-        # ── 8. Evaluate and cache ─────────────────────────────────────────
-        # JSON-intercepted answers are authoritative — skip
-        # Voice mode skips evaluation for speed
-        if full_answer_for_cache.strip() and not course_data and not skip_evaluation:
+        # ── 8. Evaluate BEFORE yielding to user ───────────────────────────
+        final_answer = full_answer_for_cache.strip()
+
+        # Signals that mean the LLM admitted it has no answer
+        NOT_FOUND_SIGNALS = [
+            "غير مذكور", "لا تتوفر", "لم أجد",
+            "لا يوجد", "غير متاح"
+        ]
+
+        FALLBACK_MSG = (
+            "عذراً، لم أتمكن من العثور على إجابة دقيقة لهذا السؤال "
+            "في اللائحة المتاحة. يُرجى التواصل مع شؤون الطلاب للتأكد."
+        )
+
+        if final_answer and not course_data and not skip_evaluation:
             max_score = max((doc.score for doc in final_docs), default=0.0)
 
+            # ── 8a. Low-score path ────────────────────────────────────────
+            # Scores below 0.05 mean retrieval failed — evaluate first,
+            # only show fallback if the LLM answer is also clearly wrong.
             if max_score < 0.05:
-                print(f"[DEBUG] ⚠️ Low score ({max_score:.4f}) — skipping cache.")
-
-            elif max_score > 0.20:
-                # High confidence — evaluate before caching
-                print(f"[DEBUG] 🕵️ Evaluating: '{optimized_query}'")
+                print(f"[DEBUG] ⚠️ Low score ({max_score:.4f}) — evaluating before yield.")
                 is_valid = await self.evaluate_answer(
                     query=optimized_query,
                     context=context_text,
-                    draft_answer=full_answer_for_cache.strip()
+                    draft_answer=final_answer
                 )
+                if not is_valid:
+                    # Only use fallback if LLM itself admitted not finding the answer.
+                    # If it gave a substantive reply despite weak retrieval, trust it —
+                    # the LLM may be using training knowledge that happens to be correct.
+                    answer_is_empty = any(s in final_answer for s in NOT_FOUND_SIGNALS)
+                    if answer_is_empty:
+                        print("[DEBUG] ❌ Low-score + LLM found nothing — showing fallback.")
+                        final_answer = FALLBACK_MSG
+                    else:
+                        print("[DEBUG] ⚠️ Low-score critic FAIL but answer substantive — yielding as-is.")
+
+            # ── 8b. Normal path ───────────────────────────────────────────
+            else:
+                print(f"[DEBUG] 🕵️ Evaluating: '{optimized_query}' (score={max_score:.4f})")
+                is_valid = await self.evaluate_answer(
+                    query=optimized_query,
+                    context=context_text,
+                    draft_answer=final_answer
+                )
+
                 if is_valid:
+                    # Good answer — cache it
                     self._save_to_qdrant_cache(
                         qdrant_client, query_vector,
-                        optimized_query, full_answer_for_cache.strip()
+                        optimized_query, final_answer
                     )
+
                 else:
-                    print("[DEBUG] ❌ FAIL — not cached.")
+                    # First attempt failed critic.
+                    # FIX: keep ALL chunks on retry — the original code dropped
+                    # chunk[0] which was often the only relevant chunk, causing
+                    # the LLM to answer from irrelevant chunks instead.
+                    print("[DEBUG] ❌ FAIL — retrying with stricter prompt (all chunks kept).")
 
-            else:
-                # Medium confidence (0.05–0.20) — cache without evaluation
-                # Hard for critic to verify raw table chunks, but answer is usually correct
-                print(f"[DEBUG] 🟡 Medium score ({max_score:.4f}) — caching without evaluation.")
-                self._save_to_qdrant_cache(
-                    qdrant_client, query_vector,
-                    optimized_query, full_answer_for_cache.strip()
-                )
+                    retry_context = "\n\n".join([
+                        f"--- مقتبس {i+1} ---\n{doc.text}"
+                        for i, doc in enumerate(final_docs[:5])
+                    ])
+                    retry_prompt = (
+                        f"📚 السياق المستخرج:\n{retry_context}\n\n"
+                        f"🎯 السؤال الحالي:\n{query}\n\n"
+                        f"⚠️ تعليمات صارمة:\n"
+                        f"- ابحث في السياق عن الإجابة المتعلقة تحديداً بـ: '{query}'\n"
+                        f"- تجاهل أي مقتبس لا يتحدث مباشرة عن موضوع السؤال.\n"
+                        f"- إذا كان السؤال يذكر قيمة محددة (GPA أو نسبة)، "
+                        f"أجب عن تلك القيمة فقط.\n"
+                        f"- إذا لم تجد الإجابة في أي مقتبس، قل: "
+                        f"'هذه المعلومة غير مذكورة في اللائحة الحالية'.\n\n"
+                        f"✍️ الإجابة المباشرة:"
+                    )
 
-        elif full_answer_for_cache.strip() and not course_data and skip_evaluation:
-            # Voice mode: cache directly without evaluation for speed
-            max_score = max((doc.score for doc in final_docs), default=0.0)
-            if max_score >= 0.05:
-                self._save_to_qdrant_cache(
-                    qdrant_client, query_vector,
-                    optimized_query, full_answer_for_cache.strip()
-                )
+                    retry_answer = ""
+                    async for chunk in self.generation_client.generate_stream(
+                        prompt=retry_prompt,
+                        chat_history=final_chat_history,
+                        temperature=0.0,
+                        max_output_tokens=2048
+                    ):
+                        clean = self.clean_output_text(chunk)
+                        if clean:
+                            retry_answer += clean
+
+                    retry_answer = retry_answer.strip()
+
+                    if retry_answer:
+                        print(f"[DEBUG] 🔁 Re-evaluating retry answer...")
+                        is_retry_valid = await self.evaluate_answer(
+                            query=optimized_query,
+                            context=retry_context,
+                            draft_answer=retry_answer
+                        )
+
+                        if is_retry_valid:
+                            print("[DEBUG] ✅ Retry PASS — caching and using retry answer.")
+                            final_answer = retry_answer
+                            self._save_to_qdrant_cache(
+                                qdrant_client, query_vector,
+                                optimized_query, final_answer
+                            )
+                        else:
+                            # Both attempts failed the critic.
+                            # WHY: The critic evaluates grounding in context, but the
+                            # reranker often puts a wrong chunk at position 1, so even
+                            # a correct answer drawn from chunk 2/3 appears "ungrounded"
+                            # to the critic. The safest policy here is to prefer a
+                            # substantive answer over a generic fallback — Arabic synonyms
+                            # mean topic-word matching would produce too many false rejects.
+                            #
+                            # Yield retry answer if it's substantive (long + not a
+                            # "not found" message). Skip caching so bad answers don't persist.
+                            is_substantive = (
+                                len(retry_answer) > 80
+                                and not any(s in retry_answer for s in NOT_FOUND_SIGNALS)
+                            )
+                            if is_substantive:
+                                print("[DEBUG] ⚠️ Double FAIL but substantive — yielding without cache.")
+                                final_answer = retry_answer
+                            else:
+                                print("[DEBUG] ❌ Double FAIL and empty/not-found — showing fallback.")
+                                final_answer = FALLBACK_MSG
+                    else:
+                        print("[DEBUG] ❌ Retry returned empty — showing fallback.")
+                        final_answer = FALLBACK_MSG
+
+        # ── 9. Yield final answer to user ─────────────────────────────────
+        if final_answer:
+            yield final_answer
+        else:
+            yield "عذراً، لم أتمكن من توليد إجابة. حاول مرة أخرى."
